@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ | Kerb docs</title>
+<meta name="description" content="Only during a hold, and only funds you put there yourself. A transfer to an address on your list never touches the contract at all: for an ERC20 it moves d">
+<meta property="og:type" content="article">
+<meta property="og:title" content="FAQ | Kerb docs">
+<meta property="og:description" content="Only during a hold, and only funds you put there yourself. A transfer to an address on your list never touches the contract at all: for an ERC20 it moves d">
+<meta property="og:site_name" content="Kerb">
+<meta property="og:url" content="" data-site-url="/docs/reference/faq">
+<link rel="canonical" href="" data-site-url="/docs/reference/faq">
+<link rel="icon" href="../../../assets/img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/base.css">
+<link rel="stylesheet" href="../../../assets/css/components.css">
+<link rel="stylesheet" href="../../../assets/css/sections.css">
+<script>
+  try {
+    document.documentElement.dataset.theme =
+      localStorage.getItem('kerb-theme') === 'light' ? 'light' : 'dark';
+  } catch (e) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#content">Skip to content</a>
+
+<div class="page-frame">
+
+  <nav class="nav-morph site-nav" aria-label="Primary" data-nav>
+    <div class="nav-lead">
+      <a class="nav-brand" href="/">Kerb</a>
+    </div>
+
+    <div class="nav-desktop">
+      <a class="nav-link panel-hover" href="/#how">How it works</a>
+      <a class="nav-link panel-hover" href="/#limits">Limits</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
+    </div>
+
+    <div class="nav-tail">
+      <span class="nav-desktop-block">
+        <button type="button" class="icon-btn panel-hover" data-theme-toggle aria-label="Light theme" title="Light theme">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+            <polygon points="17 10 17 14 16 14 16 15 15 15 15 16 14 16 14 17 10 17 10 16 9 16 9 15 8 15 8 14 7 14 7 10 8 10 8 9 9 9 9 8 10 8 10 7 14 7 14 8 15 8 15 9 16 9 16 10 17 10"></polygon>
+            <path d="m21,11v-1h1v-1h1v-2h-3v-1h-2v-2h-1V1h-2v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-2v3h-1v2h-2v1H1v2h1v1h1v1h1v2h-1v1h-1v1h-1v2h3v1h2v2h1v3h2v-1h1v-1h1v-1h2v1h1v1h1v1h2v-3h1v-2h2v-1h3v-2h-1v-1h-1v-1h-1v-2h1Zm-3,4h-1v1h-1v1h-1v1h-6v-1h-1v-1h-1v-1h-1v-6h1v-1h1v-1h1v-1h6v1h1v1h1v1h1v6Z"></path>
+          </svg>
+        </button>
+      </span>
+      <a class="btn-solid btn--nav" href="/app" data-app-link>Open App</a>
+    </div>
+  </nav>
+
+  <div id="content">
+    <main class="site-main">
+      <div class="frame docs-shell">
+
+        <div class="docs-nav">
+          <details class="docs-nav-toggle">
+            <summary>Documentation</summary>
+            <div class="docs-nav-inner">
+<div class="docs-nav-group">
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs">Kerb</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Concepts</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/concepts/address-poisoning">Address poisoning</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/the-asymmetry">The asymmetry</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/dwell-window">The dwell window</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/trust-list">The trust list</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/threat-model">Threat model</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Protocol</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/protocol/overview">Overview</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/lifecycle">Transfer lifecycle</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/state">State</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/parameters">Parameters</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/events-and-errors">Events and errors</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Implementation</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Integration</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/integration/frontend">Frontend</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Reference</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/reference/glossary">Glossary</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/faq" aria-current="page">FAQ</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/limits">Honest limits</a></li>
+</ul></div>
+            </div>
+          </details>
+        </div>
+
+        <div class="docs-body">
+          <article class="docs-article">
+            <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Reference</span><span class="sep">/</span><span>FAQ</span></div>
+            <div class="docs-prose">
+<h1 id="faq">FAQ</h1>
+<h2 id="custody-and-control">Custody and control<a class="headerlink" href="#custody-and-control" title="Permanent link">#</a></h2>
+<h3 id="does-kerb-hold-my-funds">Does Kerb hold my funds?<a class="headerlink" href="#does-kerb-hold-my-funds" title="Permanent link">#</a></h3>
+<p>Only during a hold, and only funds you put there yourself. A transfer to an
+address on your list never touches the contract at all: for an ERC20 it moves
+directly from you to the recipient in a single <code>transferFrom</code>.</p>
+<p>During a hold the contract custodies the amount. There is no owner, no pause and
+no sweep function, so the only two ways value leaves are <code>cancel</code> back to you
+and <code>settle</code> to the recipient.</p>
+<h3 id="can-kerb-freeze-my-money">Can Kerb freeze my money?<a class="headerlink" href="#can-kerb-freeze-my-money" title="Permanent link">#</a></h3>
+<p>No. There is no pause, no blocklist and no administrative role of any kind. The
+contract has no function that a third party can call to affect your funds. The
+only party who can stop a hold reaching its recipient is you, with <code>cancel</code>, and
+only before <code>releaseAt</code>.</p>
+<h3 id="does-a-stolen-key-mean-kerb-protects-me">Does a stolen key mean Kerb protects me?<a class="headerlink" href="#does-a-stolen-key-mean-kerb-protects-me" title="Permanent link">#</a></h3>
+<p>No. An attacker holding your key holds your authority. They can send, wait out
+the dwell, settle, cancel anything you try to reclaim, set your dwell to the
+minimum, and forget your real contacts. Kerb is not a recovery mechanism and
+must never be described as one. See
+<a href="/docs/concepts/threat-model">Threat model</a>.</p>
+<h3 id="can-somebody-see-who-is-on-my-list">Can somebody see who is on my list?<a class="headerlink" href="#can-somebody-see-who-is-on-my-list" title="Permanent link">#</a></h3>
+<p>Yes. Kerb stores trust lists in public contract storage and emits public events.
+Anyone can read who has trusted whom, in either direction. Kerb provides no
+privacy and nothing in its design should be read as providing any.</p>
+<h2 id="the-mechanism">The mechanism<a class="headerlink" href="#the-mechanism" title="Permanent link">#</a></h2>
+<h3 id="what-if-nobody-calls-settle">What if nobody calls settle?<a class="headerlink" href="#what-if-nobody-calls-settle" title="Permanent link">#</a></h3>
+<p>Anyone can, including the recipient, and the Kerb app does it automatically. A
+hold that nobody settles sits in escrow indefinitely, which is why <code>settle</code> is
+deliberately permissionless rather than restricted to the sender.</p>
+<h3 id="can-i-get-my-money-back-after-the-window-closes">Can I get my money back after the window closes?<a class="headerlink" href="#can-i-get-my-money-back-after-the-window-closes" title="Permanent link">#</a></h3>
+<p>No. The cutoff is hard. After <code>releaseAt</code> the funds belong to the recipient and
+the only available action is <code>settle</code>. A soft cutoff was considered and rejected
+because it would mean a recipient never reaches certainty. See
+<a href="/docs/concepts/dwell-window">The dwell window</a>.</p>
+<h3 id="why-not-just-check-the-address-more-carefully">Why not just check the address more carefully?<a class="headerlink" href="#why-not-just-check-the-address-more-carefully" title="Permanent link">#</a></h3>
+<p>Because the attack is built specifically to defeat that check. A poisoned
+address is generated to match the characters your interface shows you. Checking
+harder means checking more characters, and the attack moves to whichever
+characters the new interface displays. Kerb avoids the comparison entirely.</p>
+<h3 id="why-can-i-not-just-add-an-address-to-my-list-directly">Why can I not just add an address to my list directly?<a class="headerlink" href="#why-can-i-not-just-add-an-address-to-my-list-directly" title="Permanent link">#</a></h3>
+<p>Because the whole claim would collapse. "Written only by your completed sends"
+is a strong property. "Written by your completed sends, or by anything that can
+get you to sign one more transaction" is not, and an attacker who can get you to
+paste an address into a send field can get you to paste it into a trust field
+just as easily. See <a href="/docs/concepts/the-asymmetry">The asymmetry</a>.</p>
+<h2 id="cost">Cost<a class="headerlink" href="#cost" title="Permanent link">#</a></h2>
+<h3 id="is-there-a-token">Is there a token?<a class="headerlink" href="#is-there-a-token" title="Permanent link">#</a></h3>
+<p>No. There is no Kerb token, no airdrop, no points, no supply and no presale. The
+site shows a token contract address field reading <code>Coming Soon</code>, which is a
+placeholder in the interface and not a commitment that one will exist.</p>
+<h3 id="is-there-a-fee">Is there a fee?<a class="headerlink" href="#is-there-a-fee" title="Permanent link">#</a></h3>
+<p>No. Not at the protocol level, not to a deployer, not on settle, not on cancel.
+There is no fee recipient address in the contract, so there is no field anyone
+could set one into.</p>
+<h3 id="what-does-it-cost-to-use">What does it cost to use?<a class="headerlink" href="#what-does-it-cost-to-use" title="Permanent link">#</a></h3>
+<p>Gas, to the network. A straight through transfer should cost close to a bare
+transfer plus one storage read. A held transfer costs the escrow write, and the
+later settle recovers much of that through the storage refund when the hold is
+deleted.</p>
+<h2 id="tokens">Tokens<a class="headerlink" href="#tokens" title="Permanent link">#</a></h2>
+<h3 id="what-happens-with-a-fee-on-transfer-token">What happens with a fee on transfer token?<a class="headerlink" href="#what-happens-with-a-fee-on-transfer-token" title="Permanent link">#</a></h3>
+<p>The amount recorded is what actually arrived, not what was requested, so a
+cancelled hold returns the reduced amount. The difference was taken by the token
+on the way in and Kerb never had it. See <a href="/docs/implementation/assets">Assets</a>.</p>
+<h3 id="what-about-rebasing-tokens">What about rebasing tokens?<a class="headerlink" href="#what-about-rebasing-tokens" title="Permanent link">#</a></h3>
+<p>Do not use them with Kerb. Amounts are stored absolutely rather than as shares,
+so a rebase drifts the hold away from the contract balance in either direction.
+This is a documented limitation, not a bug to be worked around later.</p>
+<h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">#</a></h2>
+<h3 id="can-i-use-kerb-for-large-amounts">Can I use Kerb for large amounts?<a class="headerlink" href="#can-i-use-kerb-for-large-amounts" title="Permanent link">#</a></h3>
+<p>The contracts are not audited and not deployed. Until they are, the answer is
+no, and this page should not be read as encouragement. When they are deployed
+the answer is still your own judgement, informed by whoever audited them.</p>
+<h3 id="what-chain-does-this-run-on">What chain does this run on?<a class="headerlink" href="#what-chain-does-this-run-on" title="Permanent link">#</a></h3>
+<p>Robinhood Chain, chain id 4663. Addresses are published in
+<code>config/kerb.config.json</code> in the web repository once deployment happens, and the
+site reads them from there with no rebuild.</p>
+<h3 id="is-it-audited">Is it audited?<a class="headerlink" href="#is-it-audited" title="Permanent link">#</a></h3>
+<p>No. Nothing in this specification has been audited, and there is no
+implementation to audit yet. When there is one, the
+<a href="/docs/concepts/threat-model">Threat model</a> and
+<a href="/docs/reference/limits">Honest limits</a> pages will record who, what version and what they
+found.</p>
+<p>Next: <a href="/docs/reference/limits">Honest limits</a>.</p>
+            </div>
+<nav class="docs-pager" aria-label="Page">
+<a class="panel panel-hover docs-pager-link" href="/docs/reference/glossary"><span class="label">Previous</span><span class="docs-pager-title">Glossary</span></a>
+<a class="panel panel-hover docs-pager-link docs-pager-link--next" href="/docs/reference/limits"><span class="label">Next</span><span class="docs-pager-title">Honest limits</span></a>
+</nav>
+          </article>
+        </div>
+
+<aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
+<ul>
+<li><a href="#custody-and-control">Custody and control</a><ul>
+<li><a href="#does-kerb-hold-my-funds">Does Kerb hold my funds?</a></li>
+<li><a href="#can-kerb-freeze-my-money">Can Kerb freeze my money?</a></li>
+<li><a href="#does-a-stolen-key-mean-kerb-protects-me">Does a stolen key mean Kerb protects me?</a></li>
+<li><a href="#can-somebody-see-who-is-on-my-list">Can somebody see who is on my list?</a></li>
+</ul>
+</li>
+<li><a href="#the-mechanism">The mechanism</a><ul>
+<li><a href="#what-if-nobody-calls-settle">What if nobody calls settle?</a></li>
+<li><a href="#can-i-get-my-money-back-after-the-window-closes">Can I get my money back after the window closes?</a></li>
+<li><a href="#why-not-just-check-the-address-more-carefully">Why not just check the address more carefully?</a></li>
+<li><a href="#why-can-i-not-just-add-an-address-to-my-list-directly">Why can I not just add an address to my list directly?</a></li>
+</ul>
+</li>
+<li><a href="#cost">Cost</a><ul>
+<li><a href="#is-there-a-token">Is there a token?</a></li>
+<li><a href="#is-there-a-fee">Is there a fee?</a></li>
+<li><a href="#what-does-it-cost-to-use">What does it cost to use?</a></li>
+</ul>
+</li>
+<li><a href="#tokens">Tokens</a><ul>
+<li><a href="#what-happens-with-a-fee-on-transfer-token">What happens with a fee on transfer token?</a></li>
+<li><a href="#what-about-rebasing-tokens">What about rebasing tokens?</a></li>
+</ul>
+</li>
+<li><a href="#status">Status</a><ul>
+<li><a href="#can-i-use-kerb-for-large-amounts">Can I use Kerb for large amounts?</a></li>
+<li><a href="#what-chain-does-this-run-on">What chain does this run on?</a></li>
+<li><a href="#is-it-audited">Is it audited?</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</aside>
+
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<div class="toast-region" aria-live="polite"></div>
+
+<script type="module" src="../../../assets/js/main.js"></script>
+</body>
+</html>

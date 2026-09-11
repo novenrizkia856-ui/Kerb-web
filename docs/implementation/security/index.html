@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security | Kerb docs</title>
+<meta name="description" content="Concerns to hold in mind while writing the contracts, and the specific defence for each. This complements the Threat model, which covers the protocol level">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Security | Kerb docs">
+<meta property="og:description" content="Concerns to hold in mind while writing the contracts, and the specific defence for each. This complements the Threat model, which covers the protocol level">
+<meta property="og:site_name" content="Kerb">
+<meta property="og:url" content="" data-site-url="/docs/implementation/security">
+<link rel="canonical" href="" data-site-url="/docs/implementation/security">
+<link rel="icon" href="../../../assets/img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/base.css">
+<link rel="stylesheet" href="../../../assets/css/components.css">
+<link rel="stylesheet" href="../../../assets/css/sections.css">
+<script>
+  try {
+    document.documentElement.dataset.theme =
+      localStorage.getItem('kerb-theme') === 'light' ? 'light' : 'dark';
+  } catch (e) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#content">Skip to content</a>
+
+<div class="page-frame">
+
+  <nav class="nav-morph site-nav" aria-label="Primary" data-nav>
+    <div class="nav-lead">
+      <a class="nav-brand" href="/">Kerb</a>
+    </div>
+
+    <div class="nav-desktop">
+      <a class="nav-link panel-hover" href="/#how">How it works</a>
+      <a class="nav-link panel-hover" href="/#limits">Limits</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
+    </div>
+
+    <div class="nav-tail">
+      <span class="nav-desktop-block">
+        <button type="button" class="icon-btn panel-hover" data-theme-toggle aria-label="Light theme" title="Light theme">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+            <polygon points="17 10 17 14 16 14 16 15 15 15 15 16 14 16 14 17 10 17 10 16 9 16 9 15 8 15 8 14 7 14 7 10 8 10 8 9 9 9 9 8 10 8 10 7 14 7 14 8 15 8 15 9 16 9 16 10 17 10"></polygon>
+            <path d="m21,11v-1h1v-1h1v-2h-3v-1h-2v-2h-1V1h-2v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-2v3h-1v2h-2v1H1v2h1v1h1v1h1v2h-1v1h-1v1h-1v2h3v1h2v2h1v3h2v-1h1v-1h1v-1h2v1h1v1h1v1h2v-3h1v-2h2v-1h3v-2h-1v-1h-1v-1h-1v-2h1Zm-3,4h-1v1h-1v1h-1v1h-6v-1h-1v-1h-1v-1h-1v-6h1v-1h1v-1h1v-1h6v1h1v1h1v1h1v6Z"></path>
+          </svg>
+        </button>
+      </span>
+      <a class="btn-solid btn--nav" href="/app" data-app-link>Open App</a>
+    </div>
+  </nav>
+
+  <div id="content">
+    <main class="site-main">
+      <div class="frame docs-shell">
+
+        <div class="docs-nav">
+          <details class="docs-nav-toggle">
+            <summary>Documentation</summary>
+            <div class="docs-nav-inner">
+<div class="docs-nav-group">
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs">Kerb</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Concepts</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/concepts/address-poisoning">Address poisoning</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/the-asymmetry">The asymmetry</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/dwell-window">The dwell window</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/trust-list">The trust list</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/threat-model">Threat model</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Protocol</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/protocol/overview">Overview</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/lifecycle">Transfer lifecycle</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/state">State</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/parameters">Parameters</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/events-and-errors">Events and errors</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Implementation</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/security" aria-current="page">Security</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Integration</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/integration/frontend">Frontend</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Reference</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/reference/glossary">Glossary</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/faq">FAQ</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/limits">Honest limits</a></li>
+</ul></div>
+            </div>
+          </details>
+        </div>
+
+        <div class="docs-body">
+          <article class="docs-article">
+            <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Implementation</span><span class="sep">/</span><span>Security</span></div>
+            <div class="docs-prose">
+<h1 id="security">Security</h1>
+<p>Concerns to hold in mind while writing the contracts, and the specific defence
+for each. This complements the
+<a href="/docs/concepts/threat-model">Threat model</a>, which covers the protocol level.
+This page is about the code.</p>
+<h2 id="reentrancy">Reentrancy<a class="headerlink" href="#reentrancy" title="Permanent link">#</a></h2>
+<p>Every function that moves value uses two defences together.</p>
+<p><strong>Checks, effects, interactions.</strong> State is fully resolved before any external
+call. In <code>cancel</code> and <code>settle</code> the hold is removed from the pending set and
+deleted from storage before a single wei moves. A reentrant call arriving during
+the transfer reads <code>STATUS_NONE</code> and reverts with <code>HoldNotFound</code>.</p>
+<p><strong>A reentrancy guard.</strong> <code>send</code>, <code>cancel</code>, <code>settle</code> and <code>claim</code> carry
+<code>nonReentrant</code>. This is redundant against the ordering above and is kept anyway,
+because the cost is one storage slot and the failure mode it protects against is
+total loss.</p>
+<p>The native push uses a full gas <code>call</code>, so a recipient contract can run
+arbitrary code during <code>settle</code>. That is the intended behaviour, and it is why
+the ordering matters more than the guard.</p>
+<pre><code class="language-solidity">// wrong, do not write this
+IERC20(h.asset).safeTransfer(h.recipient, h.amount);
+delete _holds[holdId];
+
+// right
+delete _holds[holdId];
+IERC20(h.asset).safeTransfer(h.recipient, h.amount);
+</code></pre>
+<h2 id="cross-function-reentrancy">Cross function reentrancy<a class="headerlink" href="#cross-function-reentrancy" title="Permanent link">#</a></h2>
+<p>A recipient reentering during <code>settle</code> could call <code>send</code>, <code>cancel</code>, <code>forget</code> or
+<code>claim</code>. Walk each:</p>
+<div class="docs-table-wrap"><table>
+<thead>
+<tr>
+<th>Reentered into</th>
+<th>Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>send</code></td>
+<td>Blocked by <code>nonReentrant</code>. Without it, still safe: a new hold has a different id and its own funds.</td>
+</tr>
+<tr>
+<td><code>cancel</code></td>
+<td>The hold being settled is already deleted, so <code>HoldNotFound</code>.</td>
+</tr>
+<tr>
+<td><code>settle</code> on the same id</td>
+<td>Already deleted, <code>HoldNotFound</code>.</td>
+</tr>
+<tr>
+<td><code>settle</code> on a different id</td>
+<td>Blocked by the guard. Without it, safe, the other hold is independent and funded.</td>
+</tr>
+<tr>
+<td><code>forget</code></td>
+<td>Touches only the caller own list. The trust granted by the outer settle belongs to the sender, not the recipient.</td>
+</tr>
+<tr>
+<td><code>claim</code></td>
+<td>Balance is zeroed before the push, so a second claim sees zero.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="solvency">Solvency<a class="headerlink" href="#solvency" title="Permanent link">#</a></h2>
+<p>Invariant 3 from <a href="/docs/protocol/state">State</a>:</p>
+<blockquote>
+<p>For every asset, the contract balance is at least the sum of all pending hold
+amounts plus all claimable balances for that asset.</p>
+</blockquote>
+<p>Everything that could break it:</p>
+<div class="docs-table-wrap"><table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Defence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Recording a requested amount larger than what arrived</td>
+<td>Balance delta measurement on the ERC20 hold path</td>
+</tr>
+<tr>
+<td>Untracked native value entering</td>
+<td><code>receive()</code> reverts, <code>ValueMismatch</code> on send</td>
+</tr>
+<tr>
+<td>Native value attached to an ERC20 send</td>
+<td><code>NativeNotAccepted</code></td>
+</tr>
+<tr>
+<td>Paying a hold twice</td>
+<td>The hold is deleted before payment</td>
+</tr>
+<tr>
+<td>Claim draining more than owed</td>
+<td>Balance zeroed before the push</td>
+</tr>
+<tr>
+<td>A rebasing token shrinking the balance</td>
+<td>Not defended. Do not use rebasing tokens, see <a href="/docs/implementation/assets">Assets</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>This is the invariant to fuzz hardest. See <a href="/docs/implementation/testing">Testing</a>.</p>
+<h2 id="griefing">Griefing<a class="headerlink" href="#griefing" title="Permanent link">#</a></h2>
+<p><strong>Can somebody open a hold in my name?</strong> No. <code>send</code> takes the sender from
+<code>msg.sender</code> and the caller supplies the funds. There is no delegated send, no
+permit path and no meta transaction.</p>
+<p><strong>Can somebody stop my hold settling?</strong> No. <code>settle</code> is permissionless and has
+no precondition other than the timestamp.</p>
+<p><strong>Can somebody cancel my hold?</strong> No. <code>cancel</code> checks <code>h.sender != msg.sender</code>.</p>
+<p><strong>Can somebody fill my trust list with junk?</strong> No. The set is written only by
+<code>settle</code>, and only with the recipient of a hold the caller created and funded.</p>
+<p><strong>Can somebody block my hold id?</strong> Only by causing a pending hold to exist for
+the same sender, recipient and asset triple, and only the sender can do that.
+Blocking yourself is possible and is reported by <code>Quote.blocked</code>.</p>
+<p><strong>Can a recipient trap funds?</strong> They can refuse a native push, which routes to
+<code>claimable</code> rather than reverting. For an ERC20 with a blocklist they can leave
+a hold pending indefinitely. That case is an open question in
+<a href="/docs/implementation/assets">Assets</a>.</p>
+<h2 id="timestamp-dependence">Timestamp dependence<a class="headerlink" href="#timestamp-dependence" title="Permanent link">#</a></h2>
+<p><code>block.timestamp</code> sets <code>releaseAt</code> and gates both <code>cancel</code> and <code>settle</code>. A block
+producer can shift it by a small amount. Against a minimum dwell of sixty
+seconds the achievable shift is not enough to matter, and there is no financial
+edge in moving a settlement a few seconds either way, because settlement pays
+the recipient exactly what was held with no price, no rate and no fee.</p>
+<p>Do not use <code>block.number</code> instead. Block times vary and the value being
+expressed is a human interval.</p>
+<h2 id="arithmetic">Arithmetic<a class="headerlink" href="#arithmetic" title="Permanent link">#</a></h2>
+<p>Solidity 0.8 checked arithmetic throughout. No <code>unchecked</code> blocks except, if
+profiling justifies it, a loop counter increment in <code>KerbLens</code> paging, where the
+bound is a local length.</p>
+<p><code>releaseAt</code> is <code>uint64</code>, computed as <code>uint64(block.timestamp) + dwellOf(sender)</code>.
+With <code>MAX_DWELL</code> at seven days, overflow requires a timestamp within a week of
+2^64 seconds, roughly the year 584942417355. The cast from <code>uint256</code> to <code>uint64</code>
+is safe for the same reason.</p>
+<h2 id="denial-of-service-through-unbounded-loops">Denial of service through unbounded loops<a class="headerlink" href="#denial-of-service-through-unbounded-loops" title="Permanent link">#</a></h2>
+<p><code>KerbCore</code> contains no loops. Every write is O(1), including the set operations,
+which are constant time add, remove and contains.</p>
+<p><code>KerbLens</code> contains loops, bounded by the caller supplied <code>limit</code>, in view
+functions only. A caller who asks for too large a page gets a failed <code>eth_call</code>
+that costs nothing and reverts nothing.</p>
+<p>The trust list grows without bound in principle. It is never iterated onchain,
+so its size cannot make a write fail.</p>
+<h2 id="signature-and-approval-surface">Signature and approval surface<a class="headerlink" href="#signature-and-approval-surface" title="Permanent link">#</a></h2>
+<p>There is none. Kerb has no <code>permit</code>, no EIP712 domain, no signature
+verification and no meta transaction relay. The only approval involved is the
+ordinary ERC20 allowance the sender grants to <code>KerbCore</code>, which is required only
+for the hold path, since the straight through path moves the token directly
+between the two accounts.</p>
+<p>Interfaces should request an exact allowance rather than an unlimited one. Kerb
+cannot enforce that and should not pretend to.</p>
+<h2 id="deployment">Deployment<a class="headerlink" href="#deployment" title="Permanent link">#</a></h2>
+<p><code>KerbCore</code> takes no constructor arguments. There is nothing to configure, no
+owner to set and no address to inject. Two independent deployments from the same
+bytecode are interchangeable except that they hold different trust lists.</p>
+<p><code>KerbLens</code> takes the <code>KerbCore</code> address as its single constructor argument and
+stores it <code>immutable</code>.</p>
+<p>Verify both on the explorer before publishing the addresses. A protocol that
+claims no admin key must be readable by anyone who wants to check that claim,
+and unverified bytecode makes the claim unfalsifiable.</p>
+<p>Next: <a href="/docs/implementation/testing">Testing</a>.</p>
+            </div>
+<nav class="docs-pager" aria-label="Page">
+<a class="panel panel-hover docs-pager-link" href="/docs/implementation/assets"><span class="label">Previous</span><span class="docs-pager-title">Assets</span></a>
+<a class="panel panel-hover docs-pager-link docs-pager-link--next" href="/docs/implementation/testing"><span class="label">Next</span><span class="docs-pager-title">Testing</span></a>
+</nav>
+          </article>
+        </div>
+
+<aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
+<ul>
+<li><a href="#reentrancy">Reentrancy</a></li>
+<li><a href="#cross-function-reentrancy">Cross function reentrancy</a></li>
+<li><a href="#solvency">Solvency</a></li>
+<li><a href="#griefing">Griefing</a></li>
+<li><a href="#timestamp-dependence">Timestamp dependence</a></li>
+<li><a href="#arithmetic">Arithmetic</a></li>
+<li><a href="#denial-of-service-through-unbounded-loops">Denial of service through unbounded loops</a></li>
+<li><a href="#signature-and-approval-surface">Signature and approval surface</a></li>
+<li><a href="#deployment">Deployment</a></li>
+</ul>
+</div>
+</aside>
+
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<div class="toast-region" aria-live="polite"></div>
+
+<script type="module" src="../../../assets/js/main.js"></script>
+</body>
+</html>

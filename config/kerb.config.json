@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "productName": "Kerb",
+    "siteUrl": "",
+    "ogTitle": "Kerb",
+    "ogDescription": "First send waits. The rest fly."
+  },
+  "chain": {
+    "id": 4663,
+    "name": "Robinhood Chain",
+    "rpcUrl": "https://rpc.mainnet.chain.robinhood.com",
+    "explorerBaseUrl": "https://robinhoodchain.blockscout.com",
+    "explorerAddressPath": "/address/",
+    "explorerTxPath": "/tx/",
+    "nativeCurrency": {
+      "name": "Ether",
+      "symbol": "ETH",
+      "decimals": 18
+    }
+  },
+  "contracts": {
+    "core": {
+      "address": "0x18864D9Bd1334C14379238580D4268A7B84DD720",
+      "deployBlock": 60480190,
+      "verified": false
+    },
+    "lens": {
+      "address": "0x49D13fD98e3f3e9Fb1b4838f4DE250E782eC4492",
+      "deployBlock": 60480190,
+      "verified": false
+    }
+  },
+  "token": {
+    "address": "",
+    "symbol": "",
+    "decimals": 18
+  },
+  "defaults": {
+    "dwellSeconds": 900,
+    "minDwellSeconds": 60,
+    "maxDwellSeconds": 604800
+  },
+  "links": {
+    "x": "",
+    "github": "",
+    "docs": ""
+  },
+  "flags": {
+    "appEnabled": true,
+    "appMode": "mock",
+    "showContractsSection": true
+  },
+  "wallet": {
+    "walletConnectProjectId": "ff24e7c4e7d10744e3ccd080e4307cad",
+    "enabled": true
+  }
+}

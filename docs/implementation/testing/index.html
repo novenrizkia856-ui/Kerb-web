@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testing | Kerb docs</title>
+<meta name="description" content="KerbCore cannot be upgraded or paused. There is no path from a discovered bug to a fix, only a path to abandoning the deployment. That makes the test suite">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Testing | Kerb docs">
+<meta property="og:description" content="KerbCore cannot be upgraded or paused. There is no path from a discovered bug to a fix, only a path to abandoning the deployment. That makes the test suite">
+<meta property="og:site_name" content="Kerb">
+<meta property="og:url" content="" data-site-url="/docs/implementation/testing">
+<link rel="canonical" href="" data-site-url="/docs/implementation/testing">
+<link rel="icon" href="../../../assets/img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/base.css">
+<link rel="stylesheet" href="../../../assets/css/components.css">
+<link rel="stylesheet" href="../../../assets/css/sections.css">
+<script>
+  try {
+    document.documentElement.dataset.theme =
+      localStorage.getItem('kerb-theme') === 'light' ? 'light' : 'dark';
+  } catch (e) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#content">Skip to content</a>
+
+<div class="page-frame">
+
+  <nav class="nav-morph site-nav" aria-label="Primary" data-nav>
+    <div class="nav-lead">
+      <a class="nav-brand" href="/">Kerb</a>
+    </div>
+
+    <div class="nav-desktop">
+      <a class="nav-link panel-hover" href="/#how">How it works</a>
+      <a class="nav-link panel-hover" href="/#limits">Limits</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
+    </div>
+
+    <div class="nav-tail">
+      <span class="nav-desktop-block">
+        <button type="button" class="icon-btn panel-hover" data-theme-toggle aria-label="Light theme" title="Light theme">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+            <polygon points="17 10 17 14 16 14 16 15 15 15 15 16 14 16 14 17 10 17 10 16 9 16 9 15 8 15 8 14 7 14 7 10 8 10 8 9 9 9 9 8 10 8 10 7 14 7 14 8 15 8 15 9 16 9 16 10 17 10"></polygon>
+            <path d="m21,11v-1h1v-1h1v-2h-3v-1h-2v-2h-1V1h-2v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-2v3h-1v2h-2v1H1v2h1v1h1v1h1v2h-1v1h-1v1h-1v2h3v1h2v2h1v3h2v-1h1v-1h1v-1h2v1h1v1h1v1h2v-3h1v-2h2v-1h3v-2h-1v-1h-1v-1h-1v-2h1Zm-3,4h-1v1h-1v1h-1v1h-6v-1h-1v-1h-1v-1h-1v-6h1v-1h1v-1h1v-1h6v1h1v1h1v1h1v6Z"></path>
+          </svg>
+        </button>
+      </span>
+      <a class="btn-solid btn--nav" href="/app" data-app-link>Open App</a>
+    </div>
+  </nav>
+
+  <div id="content">
+    <main class="site-main">
+      <div class="frame docs-shell">
+
+        <div class="docs-nav">
+          <details class="docs-nav-toggle">
+            <summary>Documentation</summary>
+            <div class="docs-nav-inner">
+<div class="docs-nav-group">
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs">Kerb</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Concepts</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/concepts/address-poisoning">Address poisoning</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/the-asymmetry">The asymmetry</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/dwell-window">The dwell window</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/trust-list">The trust list</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/threat-model">Threat model</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Protocol</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/protocol/overview">Overview</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/lifecycle">Transfer lifecycle</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/state">State</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/parameters">Parameters</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/events-and-errors">Events and errors</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Implementation</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/testing" aria-current="page">Testing</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Integration</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/integration/frontend">Frontend</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Reference</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/reference/glossary">Glossary</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/faq">FAQ</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/limits">Honest limits</a></li>
+</ul></div>
+            </div>
+          </details>
+        </div>
+
+        <div class="docs-body">
+          <article class="docs-article">
+            <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Implementation</span><span class="sep">/</span><span>Testing</span></div>
+            <div class="docs-prose">
+<h1 id="testing">Testing</h1>
+<p><code>KerbCore</code> cannot be upgraded or paused. There is no path from a discovered bug
+to a fix, only a path to abandoning the deployment. That makes the test suite
+the main line of defence rather than a formality, and it should be written
+before the contract is considered done.</p>
+<p>Suggested stack: Foundry, for <code>forge test</code>, <code>forge fuzz</code> and <code>forge invariant</code>.</p>
+<h2 id="unit-tests">Unit tests<a class="headerlink" href="#unit-tests" title="Permanent link">#</a></h2>
+<h3 id="send-straight-through">send, straight through<a class="headerlink" href="#send-straight-through" title="Permanent link">#</a></h3>
+<ul>
+<li>Native to a trusted recipient moves the exact value and writes no storage</li>
+<li>ERC20 to a trusted recipient calls <code>transferFrom</code> sender to recipient directly</li>
+<li>Returns <code>bytes32(0)</code></li>
+<li>Emits <code>Sent</code> with the right arguments</li>
+<li>Reverts <code>ValueMismatch</code> when <code>msg.value != amount</code> for native</li>
+<li>Reverts <code>NativeNotAccepted</code> when value is attached to an ERC20 send</li>
+<li>Reverts on a failing native push rather than falling back</li>
+</ul>
+<h3 id="send-new-recipient">send, new recipient<a class="headerlink" href="#send-new-recipient" title="Permanent link">#</a></h3>
+<ul>
+<li>Creates a hold with <code>releaseAt == block.timestamp + dwellOf(sender)</code></li>
+<li>Adds the id to the sender pending set</li>
+<li>Emits <code>Held</code></li>
+<li>Reverts <code>HoldPending</code> on a second send to the same triple</li>
+<li>Allows a second send to the same recipient with a different asset</li>
+<li>Records the received amount, not the requested amount, for a fee on transfer token</li>
+<li>Reverts <code>ZeroRecipient</code>, <code>SelfSend</code>, <code>ZeroAmount</code> on each bad input</li>
+</ul>
+<h3 id="cancel">cancel<a class="headerlink" href="#cancel" title="Permanent link">#</a></h3>
+<ul>
+<li>Only the sender can call it</li>
+<li>Reverts <code>WindowClosed</code> at exactly <code>releaseAt</code></li>
+<li>Succeeds at <code>releaseAt - 1</code></li>
+<li>Returns the full held amount</li>
+<li>Deletes the hold and removes it from the pending set</li>
+<li>Does <strong>not</strong> add the recipient to the trust list</li>
+<li>Reverts <code>HoldNotFound</code> on a second cancel</li>
+</ul>
+<h3 id="settle">settle<a class="headerlink" href="#settle" title="Permanent link">#</a></h3>
+<ul>
+<li>Anyone can call it, tested from a third address</li>
+<li>Reverts <code>WindowOpen</code> at <code>releaseAt - 1</code></li>
+<li>Succeeds at exactly <code>releaseAt</code></li>
+<li>Delivers the full amount</li>
+<li>Adds the recipient to the trust list and emits <code>Trusted</code> once</li>
+<li>A second settlement to the same recipient does not emit <code>Trusted</code> again</li>
+<li>Reverts <code>HoldNotFound</code> on a second settle</li>
+<li>Native push to a rejecting contract credits <code>claimable</code> and emits
+  <code>Settled(delivered: false)</code> rather than reverting</li>
+</ul>
+<h3 id="forget-setdwell-claim">forget, setDwell, claim<a class="headerlink" href="#forget-setdwell-claim" title="Permanent link">#</a></h3>
+<ul>
+<li><code>forget</code> removes and emits, and is a silent no op on an absent entry</li>
+<li>After <code>forget</code>, the next send to that recipient opens a hold again</li>
+<li><code>setDwell</code> accepts the bounds exactly, rejects one below <code>MIN_DWELL</code> and one
+  above <code>MAX_DWELL</code></li>
+<li><code>setDwell(0)</code> clears the override and <code>dwellOf</code> returns <code>DEFAULT_DWELL</code></li>
+<li>A dwell change does not move the <code>releaseAt</code> of an existing hold</li>
+<li><code>claim</code> zeroes the balance before pushing, reverts <code>NothingToClaim</code> at zero</li>
+</ul>
+<h2 id="property-and-invariant-tests">Property and invariant tests<a class="headerlink" href="#property-and-invariant-tests" title="Permanent link">#</a></h2>
+<p>Run these under <code>forge invariant</code> with a handler that randomly calls <code>send</code>,
+<code>cancel</code>, <code>settle</code>, <code>forget</code>, <code>setDwell</code> and <code>claim</code> across several actors, a
+native asset and at least two token types.</p>
+<div class="docs-table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Property</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>No hold ever has a status other than none or pending after a call returns</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>_pending[s]</code> contains exactly the ids of pending holds whose sender is <code>s</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Solvency.</strong> For each asset, contract balance is at least the sum of pending amounts plus claimable balances</td>
+</tr>
+<tr>
+<td>4</td>
+<td>A recipient appears in <code>_trusted[s]</code> only if a settle happened for that pair, and disappears only through <code>forget</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>_dwell[s]</code> is zero or inside the bounds</td>
+</tr>
+<tr>
+<td>6</td>
+<td>An actor cannot change any other actor trust list, dwell, holds or claimable balance</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Total value in is equal to total value out plus what is still held</td>
+</tr>
+</tbody>
+</table></div>
+<p>Property 3 is the one that matters most. Property 6 is the one that expresses
+the entire security claim of the protocol and should be asserted after every
+single handler call.</p>
+<h2 id="fuzz-targets">Fuzz targets<a class="headerlink" href="#fuzz-targets" title="Permanent link">#</a></h2>
+<ul>
+<li><code>send</code> with fuzzed amounts across the full <code>uint256</code> range against a token
+  with a fuzzed total supply</li>
+<li><code>setDwell</code> across the full <code>uint64</code> range, asserting only the bounds are
+  accepted</li>
+<li>Time warping between send and settle across a wide range, asserting the
+  boundary at exactly <code>releaseAt</code></li>
+<li>Fee on transfer tokens with a fuzzed fee from 0 to 100 percent, asserting the
+  stored amount always equals the delta</li>
+</ul>
+<h2 id="adversarial-tests">Adversarial tests<a class="headerlink" href="#adversarial-tests" title="Permanent link">#</a></h2>
+<p>Write a malicious recipient contract that, on receiving native value, attempts
+each of:</p>
+<ul>
+<li><code>settle</code> on the same hold id</li>
+<li><code>settle</code> on a different pending hold</li>
+<li><code>cancel</code> on the hold being settled</li>
+<li><code>send</code> back to the original sender</li>
+<li><code>forget</code> on its own list</li>
+<li><code>claim</code></li>
+</ul>
+<p>None may succeed in extracting more than the hold amount, and the solvency
+invariant must hold afterwards.</p>
+<p>Also test a recipient that consumes all forwarded gas, and one that reverts
+unconditionally, confirming the <code>claimable</code> fallback rather than a revert.</p>
+<h2 id="gas-targets">Gas targets<a class="headerlink" href="#gas-targets" title="Permanent link">#</a></h2>
+<p>Not correctness, but worth measuring and keeping honest, since the straight
+through path being cheap is part of the argument for using Kerb at all.</p>
+<div class="docs-table-wrap"><table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>send</code> straight through, native</td>
+<td>bare transfer plus one cold SLOAD</td>
+</tr>
+<tr>
+<td><code>send</code> straight through, ERC20</td>
+<td>bare <code>transferFrom</code> plus one cold SLOAD</td>
+</tr>
+<tr>
+<td><code>send</code> opening a hold</td>
+<td>four storage writes plus one set insertion</td>
+</tr>
+<tr>
+<td><code>settle</code></td>
+<td>the write cost largely refunded by the delete</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="differential-check-against-the-frontend">Differential check against the frontend<a class="headerlink" href="#differential-check-against-the-frontend" title="Permanent link">#</a></h2>
+<p>The web app computes the same truncation and the same <code>willHold</code> decision that
+the contracts do. Once the contracts exist, add a test that a set of random
+addresses truncates identically in Solidity and in the JavaScript helper in
+<code>config/config.js</code>, so a display in the app can never disagree with a display
+derived from chain state.</p>
+<h2 id="what-is-not-covered-yet">What is not covered yet<a class="headerlink" href="#what-is-not-covered-yet" title="Permanent link">#</a></h2>
+<p>No formal verification is planned. No audit has been scheduled. When either
+happens this page should record who, what version and what was found. Until it
+does, this suite is all there is.</p>
+<p>Next: <a href="/docs/integration/frontend">Frontend integration</a>.</p>
+            </div>
+<nav class="docs-pager" aria-label="Page">
+<a class="panel panel-hover docs-pager-link" href="/docs/implementation/security"><span class="label">Previous</span><span class="docs-pager-title">Security</span></a>
+<a class="panel panel-hover docs-pager-link docs-pager-link--next" href="/docs/integration/frontend"><span class="label">Next</span><span class="docs-pager-title">Frontend</span></a>
+</nav>
+          </article>
+        </div>
+
+<aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
+<ul>
+<li><a href="#unit-tests">Unit tests</a><ul>
+<li><a href="#send-straight-through">send, straight through</a></li>
+<li><a href="#send-new-recipient">send, new recipient</a></li>
+<li><a href="#cancel">cancel</a></li>
+<li><a href="#settle">settle</a></li>
+<li><a href="#forget-setdwell-claim">forget, setDwell, claim</a></li>
+</ul>
+</li>
+<li><a href="#property-and-invariant-tests">Property and invariant tests</a></li>
+<li><a href="#fuzz-targets">Fuzz targets</a></li>
+<li><a href="#adversarial-tests">Adversarial tests</a></li>
+<li><a href="#gas-targets">Gas targets</a></li>
+<li><a href="#differential-check-against-the-frontend">Differential check against the frontend</a></li>
+<li><a href="#what-is-not-covered-yet">What is not covered yet</a></li>
+</ul>
+</div>
+</aside>
+
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<div class="toast-region" aria-live="polite"></div>
+
+<script type="module" src="../../../assets/js/main.js"></script>
+</body>
+</html>

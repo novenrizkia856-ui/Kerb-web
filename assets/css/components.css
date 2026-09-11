@@ -1,0 +1,1046 @@
+/* components.css
+   Ported from the reference frontend, unchanged except where a Tailwind utility
+   had to become a real declaration. Every value traces to notes/DESIGN-SYSTEM.md.
+   Verdicts are in DESIGN-SYSTEM section 7.3. Nothing here is restyled. */
+
+/* ============================================================================
+   1. Structure: rules, labels, cell grids
+   ========================================================================== */
+
+.rule {
+  border-top: 1px dashed var(--line);
+  position: relative;
+}
+
+.rule::before,
+.rule::after {
+  content: "+";
+  z-index: 1;
+  color: var(--muted);
+  background: var(--bg);
+  padding: 2px;
+  font-size: 14px;
+  line-height: 1;
+  position: absolute;
+  top: -.72em;
+}
+
+.rule::before { left: -9px; }
+.rule::after  { right: -9px; }
+
+.label {
+  font-family: var(--font-mono);
+  color: var(--faint);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+/* The bar that introduces each section. DESIGN-SYSTEM 5.2. */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px dashed var(--line);
+}
+
+@media (min-width: 640px) {
+  .section-label { padding-inline: 40px; }
+}
+
+/* Hairline grid. The 1px gap is the hairline. DESIGN-SYSTEM 5.6. */
+.cells {
+  background: var(--hairline);
+  border: 1px solid var(--hairline);
+  gap: 1px;
+  display: grid;
+}
+
+.cells > * { background: var(--bg); }
+.cells--surface > * { background: var(--surface); }
+
+@media (min-width: 640px) {
+  .cells--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cells--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .cells--lg-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cells--lg-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ============================================================================
+   2. Surfaces
+   ========================================================================== */
+
+.panel {
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 2px;
+}
+
+.panel-hover {
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
+  background-color: transparent;
+  border-radius: 4px;
+}
+
+.panel-hover:hover,
+.panel-hover:focus-visible {
+  background-color: var(--backdrop);
+}
+
+.panel-hover[aria-current="page"] {
+  background-color: var(--backdrop);
+  color: var(--text);
+}
+
+/* Ported from the reference. Phase 0 marked this REMOVE because Kerb had no
+   docs rail. It has one now, so the component comes back unchanged. */
+.docs-rail-link {
+  color: var(--muted);
+  transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  display: block;
+}
+
+.docs-rail-link:hover {
+  color: var(--text);
+  background: var(--backdrop);
+}
+
+.docs-rail-link[aria-current="page"] {
+  color: var(--text);
+  background: var(--backdrop);
+}
+
+/* ============================================================================
+   3. Buttons
+   ========================================================================== */
+
+.btn {
+  background: var(--solid);
+  color: var(--solid-ink);
+  font-family: var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity var(--dur) var(--ease);
+  border: none;
+  border-radius: 2px;
+  font-weight: 500;
+}
+
+.btn:hover { color: var(--solid-ink); opacity: .88; }
+.btn:disabled { opacity: .4; cursor: default; }
+
+.btn-solid {
+  background: var(--solid);
+  color: var(--solid-ink);
+  font-family: var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  border-radius: 2px;
+  font-weight: 500;
+  display: inline-block;
+}
+
+.btn-solid:hover { filter: brightness(.92); }
+.btn-solid:disabled { opacity: .4; cursor: default; filter: none; }
+
+.btn-ghost {
+  color: var(--muted);
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: none;
+  border-radius: 2px;
+  font-weight: 500;
+}
+
+.btn-ghost:hover { color: var(--text); border-color: var(--text); }
+.btn-ghost:disabled { opacity: .4; cursor: default; }
+
+.btn-corner {
+  color: var(--muted);
+  transition: color var(--dur) var(--ease);
+  font-family: var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-weight: 500;
+  display: inline-block;
+  position: relative;
+}
+
+.btn-corner .c { border: 0 solid var(--muted); }
+.btn-corner:hover { color: var(--text); }
+.btn-corner:hover .c { border-color: var(--text); }
+.btn-corner:disabled { opacity: .4; cursor: default; }
+
+/* A control that stays focusable and clickable so it can announce why it is
+   inert. Brief 9.2 requires exactly this for the token strip copy button. */
+[aria-disabled="true"] {
+  opacity: .4;
+  cursor: default;
+}
+
+.btn-corner[aria-disabled="true"]:hover { color: var(--muted); }
+.btn-corner[aria-disabled="true"]:hover .c { border-color: var(--muted); }
+.btn-ghost[aria-disabled="true"]:hover { color: var(--muted); border-color: var(--line); }
+.btn-solid[aria-disabled="true"]:hover { filter: none; }
+
+/* Button sizes, each combination taken from a real use on the reference page. */
+.btn--nav {
+  height: 32px;
+  padding-inline: 16px;
+  font-size: 11px;
+  line-height: 32px;
+}
+
+.btn--lg {
+  padding: 15px 28px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.btn-corner.btn--lg { padding-inline: 24px; }
+
+.btn--md {
+  padding: 12px 20px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.btn--sm {
+  padding: 10px 16px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.btn--block {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  font-size: 11px;
+  line-height: 1;
+  text-align: center;
+}
+
+/* ============================================================================
+   4. Corner marks
+   ========================================================================== */
+
+.corners { position: relative; }
+
+.corners > .c { border: 0 solid var(--faint); }
+
+.c {
+  width: 9px;
+  height: 9px;
+  position: absolute;
+  pointer-events: none;
+}
+
+.c-tl { border-top-width: 1px; border-left-width: 1px; top: 0; left: 0; }
+.c-tr { border-top-width: 1px; border-right-width: 1px; top: 0; right: 0; }
+.c-bl { border-bottom-width: 1px; border-left-width: 1px; bottom: 0; left: 0; }
+.c-br { border-bottom-width: 1px; border-right-width: 1px; bottom: 0; right: 0; }
+
+/* Corner ticks that fade in on hover and focus. DESIGN-SYSTEM 4.2 F. */
+.btn,
+.btn-ghost,
+.btn-solid,
+.panel-hover,
+.docs-rail-link,
+.hover-corners {
+  position: relative;
+}
+
+.btn::after,
+.btn-ghost::after,
+.btn-solid::after,
+.panel-hover::after,
+.docs-rail-link::after,
+.hover-corners::after {
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur) var(--ease);
+  --tick: var(--muted);
+  background:
+    linear-gradient(var(--tick), var(--tick)) top left / 9px 1px,
+    linear-gradient(var(--tick), var(--tick)) top left / 1px 9px,
+    linear-gradient(var(--tick), var(--tick)) top right / 9px 1px,
+    linear-gradient(var(--tick), var(--tick)) top right / 1px 9px,
+    linear-gradient(var(--tick), var(--tick)) bottom left / 9px 1px,
+    linear-gradient(var(--tick), var(--tick)) bottom left / 1px 9px,
+    linear-gradient(var(--tick), var(--tick)) bottom right / 9px 1px,
+    linear-gradient(var(--tick), var(--tick)) bottom right / 1px 9px;
+  background-repeat: no-repeat;
+  position: absolute;
+  inset: 0;
+}
+
+.hover-corners--pad::after { inset: -5px -8px; }
+
+.btn:hover::after,
+.btn:focus-visible::after,
+.btn-ghost:hover::after,
+.btn-ghost:focus-visible::after,
+.btn-solid:hover::after,
+.btn-solid:focus-visible::after,
+.panel-hover:hover::after,
+.panel-hover:focus-visible::after,
+.docs-rail-link:hover::after,
+.docs-rail-link:focus-visible::after,
+.hover-corners:hover::after,
+.hover-corners:focus-visible::after {
+  opacity: 1;
+}
+
+/* ============================================================================
+   5. Inputs
+   ========================================================================== */
+
+.input-well {
+  background: var(--well);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: var(--font-display);
+  border-radius: 2px;
+  outline: none;
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 16px;
+}
+
+.input-well:focus { border-color: var(--accent-text); }
+
+.input-well:focus-visible {
+  outline: 1px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.input-well:disabled { opacity: .4; cursor: default; }
+
+/* 16px on mobile stops iOS zooming on focus, 13px from sm up. */
+@media (min-width: 640px) {
+  .input-well { font-size: 13px; }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ============================================================================
+   6. Ledger rows and chips
+   ========================================================================== */
+
+.ledger {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-mono);
+}
+
+.ledger-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.ledger-row .k { color: var(--faint); }
+
+.ledger-row .lead {
+  flex: 1;
+  border-bottom: 1px dotted var(--line);
+}
+
+.ledger-row .v {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.chip {
+  padding: 6px 10px;
+  line-height: 1;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--muted);
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.chip--fill {
+  background: var(--solid);
+  color: var(--solid-ink);
+  border-color: var(--solid);
+}
+
+.chip--accent {
+  border-color: var(--accent-deep);
+  color: var(--accent-lit);
+}
+
+/* ============================================================================
+   7. Slab
+   ========================================================================== */
+
+.slab {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.slab img {
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  width: 100%;
+  height: auto;
+  transition: transform var(--dur) var(--ease);
+  border-radius: 4px;
+  display: block;
+}
+
+.slab:hover { z-index: 10; }
+.slab:hover img { transform: translateY(-10px); }
+
+/* ============================================================================
+   8. Navigation
+   ========================================================================== */
+
+.site-nav {
+  position: fixed;
+  left: 50%;
+  translate: -50%;
+  z-index: 50;
+  height: var(--nav-h);
+  flex-shrink: 0;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 16px;
+  display: grid;
+
+  top: var(--nav-rest-top);
+  width: 100%;
+  border-radius: 0;
+  border: 1px solid;
+  border-color: transparent transparent var(--hairline) transparent;
+  background-color: var(--bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 0 0 0 transparent;
+}
+
+@media (min-width: 640px) {
+  .site-nav {
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    padding-inline: 24px;
+  }
+}
+
+.nav-morph {
+  transition:
+    top .35s var(--ease),
+    width .35s var(--ease),
+    border-radius .35s var(--ease),
+    border-color .35s var(--ease),
+    background-color .35s var(--ease),
+    box-shadow .35s var(--ease);
+}
+
+.site-nav[data-scrolled="true"] {
+  top: 12px;
+  width: min(1120px, calc(100vw - 24px));
+  border-radius: 4px;
+  border-color: var(--line);
+  background-color: var(--bg);
+  box-shadow: var(--nav-float-shadow);
+}
+
+/* Translucency only where color-mix is supported. Without the guard an
+   unsupported color-mix would resolve to unset and leave the bar transparent. */
+@supports (color: color-mix(in lab, red, red)) {
+  .site-nav[data-scrolled="true"] {
+    background-color: color-mix(in srgb, var(--bg) 80%, transparent);
+  }
+}
+
+.nav-brand {
+  display: flex;
+  height: 26px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.nav-lead {
+  display: flex;
+  min-width: 0;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+}
+
+.nav-tail {
+  display: flex;
+  min-width: 0;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  justify-self: end;
+}
+
+@media (min-width: 640px) {
+  .nav-tail { gap: 12px; }
+}
+
+.nav-desktop,
+.nav-desktop-block { display: none; }
+
+.nav-mobile-only { display: flex; }
+
+@media (min-width: 640px) {
+  .nav-desktop { display: flex; align-items: center; justify-content: center; gap: 4px; }
+  .nav-desktop-block { display: block; }
+  .nav-mobile-only { display: none; }
+}
+
+.nav-link {
+  display: flex;
+  height: 32px;
+  align-items: center;
+  padding-inline: 12px;
+  font-size: 13.5px;
+  line-height: 1;
+  font-weight: 500;
+  font-family: var(--font-display);
+  color: var(--muted);
+}
+
+.nav-link:hover { color: var(--accent-text); }
+
+.icon-btn {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* Bottom bar, mobile only. Ported from the reference's inline declarations. */
+.mobile-nav {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 50;
+  height: var(--mobile-nav-h);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background-color: var(--surface);
+  border-top: 1px solid var(--hairline);
+}
+
+.mobile-nav a {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.mobile-nav a > .tab-mark {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  margin-inline: auto;
+  height: 2px;
+  width: 32px;
+  background-color: transparent;
+}
+
+.mobile-nav a[aria-current="true"] { color: var(--text); }
+.mobile-nav a[aria-current="true"] > .tab-mark { background-color: var(--accent); }
+
+/* ============================================================================
+   9. Decorative fields
+   ========================================================================== */
+
+.ascii-rain {
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: var(--font-mono);
+  letter-spacing: .35em;
+  white-space: pre;
+  color: var(--text);
+  opacity: .05;
+  font-size: 12px;
+  line-height: 1.7;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.ascii-rain--pop { opacity: .32; }
+
+.grad-text {
+  background: linear-gradient(92deg, var(--accent) 10%, var(--accent-lit) 90%);
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.drifter {
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  position: absolute;
+}
+
+.drifter,
+.drift-float {
+  animation: 7s ease-in-out infinite drift;
+}
+
+@keyframes drift {
+  0%, to {
+    transform: translateY(0) rotate(var(--tilt, 0deg));
+  }
+  50% {
+    transform: translateY(-8px) rotate(calc(var(--tilt, 0deg) + 2.5deg));
+  }
+}
+
+/* Giant outlined wordmark with a pointer torch. DESIGN-SYSTEM 4.2 M. */
+.wordmark {
+  display: flex;
+  justify-content: center;
+  user-select: none;
+  overflow: hidden;
+  height: 8.5vw;
+}
+
+.wordmark-inner {
+  position: relative;
+  width: max-content;
+  flex-shrink: 0;
+  --spot: 0;
+}
+
+.wordmark-layer {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 16.4vw;
+  letter-spacing: -0.02em;
+  line-height: .82;
+  font-weight: 700;
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--line);
+}
+
+.wordmark-lit {
+  position: absolute;
+  inset: 0;
+  -webkit-text-stroke: 1.2px var(--text);
+  opacity: var(--spot, 0);
+  transition: opacity .35s var(--ease);
+  -webkit-mask-image: radial-gradient(circle 210px at var(--mx, 50%) var(--my, 50%), black 0%, transparent 72%);
+  mask-image: radial-gradient(circle 210px at var(--mx, 50%) var(--my, 50%), black 0%, transparent 72%);
+}
+
+/* ============================================================================
+   10. Stream pulse. DESIGN-SYSTEM 4.2 E.
+   ========================================================================== */
+
+/* Ported verbatim, @supports guard included. */
+.stream-line {
+  background: var(--text);
+  height: 1px;
+  position: relative;
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  .stream-line {
+    background: color-mix(in srgb, var(--text) 30%, transparent);
+  }
+}
+
+.stream-line::after {
+  content: "";
+  background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
+  height: 2px;
+  animation: 2.6s linear infinite stream;
+  animation-delay: var(--stream-delay, 0s);
+  background-position-x: -80%;
+  background-repeat: no-repeat;
+  background-size: 34% 100%;
+  position: absolute;
+  top: -.5px;
+  left: 0;
+  right: 0;
+}
+
+@keyframes stream {
+  0%  { background-position-x: -80%; }
+  to  { background-position-x: 180%; }
+}
+
+.stream-line--rev::after { animation-name: stream-rev; }
+
+@keyframes stream-rev {
+  0%  { background-position-x: 180%; }
+  to  { background-position-x: -80%; }
+}
+
+.stream-elbow-v {
+  width: 1px;
+  position: absolute;
+}
+
+.stream-elbow-v::after {
+  content: "";
+  background: linear-gradient(180deg, transparent, var(--accent) 50%, transparent);
+  width: 2px;
+  animation: 2.6s linear infinite stream-elbow-v;
+  animation-delay: var(--stream-delay, 0s);
+  background-position-y: -150%;
+  background-repeat: no-repeat;
+  background-size: 100% 60%;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -.5px;
+}
+
+@keyframes stream-elbow-v {
+  0%   { background-position-y: -150%; }
+  22%  { background-position-y: 250%; }
+  to   { background-position-y: 250%; }
+}
+
+.stream-elbow-h {
+  height: 1px;
+  position: absolute;
+}
+
+.stream-elbow-h::after {
+  content: "";
+  background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
+  height: 2px;
+  animation: 2.6s linear infinite stream-elbow-h;
+  animation-delay: var(--stream-delay, 0s);
+  background-position-x: 180%;
+  background-repeat: no-repeat;
+  background-size: 34% 100%;
+  position: absolute;
+  top: -.5px;
+  left: 0;
+  right: 0;
+}
+
+@keyframes stream-elbow-h {
+  0%, 18% { background-position-x: 180%; }
+  75%     { background-position-x: -80%; }
+  to      { background-position-x: -80%; }
+}
+
+/* ============================================================================
+   11. Reveal and state animations
+   ========================================================================== */
+
+@keyframes fade-in {
+  0%  { opacity: 0; transform: translateY(6px); }
+  to  { opacity: 1; transform: none; }
+}
+
+.fade-in { animation: fade-in var(--dur-slow) var(--ease) both; }
+
+@keyframes stagein {
+  0% { opacity: 0; transform: translateY(4px); }
+}
+
+.stage-in { animation: stagein .28s var(--ease); }
+
+@keyframes pulse {
+  0%, to { opacity: 1; }
+  50%    { opacity: .45; }
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--accent-lit);
+  animation: pulse 2s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes gate-shake {
+  0%, to   { transform: translate(0); }
+  20%, 60% { transform: translate(-5px); }
+  40%, 80% { transform: translate(5px); }
+}
+
+.gate-shake { animation: .35s gate-shake; }
+
+/* ============================================================================
+   12. Typer. DESIGN-SYSTEM 4.2 A.
+   ========================================================================== */
+
+[data-typer] {
+  --typer-fg: var(--text);
+  --typer-bg: var(--bg);
+  --typer-accent: var(--accent);
+  --typer-accent-text: var(--accent-text);
+  --typer-accent-ink: var(--ink);
+  --typer-radius: 4px;
+}
+
+[data-typer][data-typer-type="initial"] { opacity: 0; }
+
+[data-typer] .word { white-space: pre; }
+
+[data-typer] .word .char {
+  box-sizing: content-box;
+  color: var(--typer-fg);
+  background: none;
+  transition: none;
+  display: inline-block;
+}
+
+[data-typer] .word .char.charInit,
+[data-typer].grad-text .word .char { color: transparent; }
+
+[data-typer] .word .char.charFill {
+  color: var(--typer-bg);
+  background: var(--typer-fg);
+  border-radius: var(--typer-radius);
+}
+
+[data-typer] .word .char.charFill:has(+ .charFill) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+[data-typer] .word .char.charFill + .charFill { border-radius: 0; }
+
+[data-typer] .word .char.charFill + .charFill:last-child,
+[data-typer] .word .char.charFill + .charFill:has(+ :not(.charFill)) {
+  border-radius: 0 var(--typer-radius) var(--typer-radius) 0;
+}
+
+[data-typer] .word .char.charInverse {
+  color: var(--typer-bg);
+  background: var(--typer-fg);
+}
+
+[data-typer] .word .char.charAccent {
+  color: var(--typer-accent-text);
+  background: none;
+}
+
+[data-typer] .word .char.charAccentInverse {
+  color: var(--typer-accent-ink);
+  background: var(--typer-accent);
+  border-radius: var(--typer-radius);
+}
+
+[data-typer] .word .char.charAccentInverse:has(+ .charAccentInverse) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+[data-typer] .word .char.charAccentInverse + .charAccentInverse { border-radius: 0; }
+
+[data-typer] .word .char.charAccentInverse + .charAccentInverse:last-child,
+[data-typer] .word .char.charAccentInverse + .charAccentInverse:has(+ :not(.charAccentInverse)) {
+  border-radius: 0 var(--typer-radius) var(--typer-radius) 0;
+}
+
+[data-typer] .word .char.charAccentFill {
+  color: var(--typer-accent);
+  background: var(--typer-accent);
+}
+
+[data-typer] .word .char.charBorder {
+  color: var(--typer-fg);
+  position: relative;
+}
+
+[data-typer] .word .char.charBorder::after {
+  content: "";
+  border: 1px solid var(--typer-accent);
+  border-radius: var(--typer-radius);
+  display: inline-block;
+  position: absolute;
+  inset: 0;
+}
+
+[data-typer] .word .char.charBorder:has(+ .charBorder)::after {
+  border-right: 1px solid transparent;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+[data-typer] .word .char.charBorder + .charBorder::after {
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+  border-radius: 0;
+}
+
+[data-typer] .word .char.charBorder + .charBorder:last-child::after,
+[data-typer] .word .char.charBorder + .charBorder:has(+ :not(.charBorder))::after {
+  border-left: 1px solid transparent;
+  border-right: 1px solid var(--typer-accent);
+  border-radius: 0 var(--typer-radius) var(--typer-radius) 0;
+}
+
+/* ============================================================================
+   13. Reduced motion
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Ported from the reference. */
+  .fade-in { animation: none; }
+  .stage-in { animation: none; }
+  .slab:hover img { transform: none; }
+  .nav-morph { transition: none; }
+  .drifter, .drift-float { animation: none; }
+  .stream-line::after,
+  .stream-elbow-v::after,
+  .stream-elbow-h::after { display: none; }
+
+  .btn::after,
+  .btn-ghost::after,
+  .btn-solid::after,
+  .panel-hover::after,
+  .docs-rail-link::after,
+  .hover-corners::after { transition: none; }
+
+  [data-typer][data-typer-type="initial"] { opacity: 1; }
+  [data-typer] .word .char.charInit { color: var(--typer-fg); }
+
+  /* ADDED. The reference leaves these three running under reduced motion.
+     Brief section 12 requires loops to be disabled, so they are. Logged as an
+     addition in the Phase 6 deviation log. */
+  .pulse-dot { animation: none; }
+  .gate-shake { animation: none; }
+  .wordmark-lit { transition: none; }
+}
+
+/* Rise without the fade. P2 with the opacity channel omitted, same 0.28s, same
+   easing, same 4px distance as .stage-in.
+
+   It exists because a colour at 4.89 to 1 cannot survive being faded: any
+   opacity below 1 puts it under the 4.5 line, and axe catches the frame. The
+   history feed arrives in --state-danger, so a fading entry is a real contrast
+   defect for the length of the tween rather than a theoretical one. Sliding
+   without fading removes the failing frame and reads better for an arrival
+   anyway. Logged in notes/MOTION-LOG.md. */
+@keyframes rise-in {
+  0% { transform: translateY(4px); }
+}
+
+.rise-in { animation: rise-in .28s var(--ease); }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in { animation: none; }
+}
+
+/* --- wallet -----------------------------------------------------------------
+   The picker and the account menu share one shell. Positioned from script
+   against the button, so nothing here assumes where in the page it sits. */
+
+.wallet-picker {
+  min-width: 13rem;
+  max-width: min(20rem, calc(100vw - 1rem));
+  padding: var(--space-2);
+}
+
+.wallet-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wallet-option {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: var(--step--1);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.wallet-option:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.wallet-empty {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--fg-dim);
+  font-size: var(--step--1);
+}
+
+/* The banner never hides the app behind it. A connected visitor on the wrong
+   chain still reads the same screen as everybody else, with one extra line. */
+.wallet-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--accent);
+  color: var(--fg);
+  font-size: var(--step--1);
+}
+
+.wallet-banner[hidden] {
+  display: none;
+}

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kerb App</title>
+<meta name="description" content="Kerb demo shell. Demo data only.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Kerb App">
+<meta property="og:description" content="Kerb demo shell. Demo data only.">
+<meta property="og:site_name" content="Kerb">
+<meta property="og:url" content="" data-site-url="/app">
+<link rel="canonical" href="" data-site-url="/app">
+<link rel="icon" href="../assets/img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="../assets/css/base.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/sections.css">
+<script>
+  try {
+    document.documentElement.dataset.theme =
+      localStorage.getItem('kerb-theme') === 'light' ? 'light' : 'dark';
+  } catch (e) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#content">Skip to content</a>
+
+<div class="page-frame">
+
+  <nav class="nav-morph site-nav" aria-label="Primary" data-nav>
+    <div class="nav-lead">
+      <a class="nav-brand" href="/">Kerb</a>
+    </div>
+
+    <div class="nav-desktop">
+      <a class="nav-link panel-hover" href="/#how">How it works</a>
+      <a class="nav-link panel-hover" href="/#limits">Limits</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/docs">Docs</a>
+    </div>
+
+    <div class="nav-tail">
+      <span class="nav-desktop-block">
+        <button type="button" class="icon-btn panel-hover" data-theme-toggle aria-label="Light theme" title="Light theme">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+            <polygon points="17 10 17 14 16 14 16 15 15 15 15 16 14 16 14 17 10 17 10 16 9 16 9 15 8 15 8 14 7 14 7 10 8 10 8 9 9 9 9 8 10 8 10 7 14 7 14 8 15 8 15 9 16 9 16 10 17 10"></polygon>
+            <path d="m21,11v-1h1v-1h1v-2h-3v-1h-2v-2h-1V1h-2v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-2v3h-1v2h-2v1H1v2h1v1h1v1h1v2h-1v1h-1v1h-1v2h3v1h2v2h1v3h2v-1h1v-1h1v-1h2v1h1v1h1v1h2v-3h1v-2h2v-1h3v-2h-1v-1h-1v-1h-1v-2h1Zm-3,4h-1v1h-1v1h-1v1h-6v-1h-1v-1h-1v-1h-1v-6h1v-1h1v-1h1v-1h6v1h1v1h1v1h1v6Z"></path>
+          </svg>
+        </button>
+      </span>
+      <button type="button" class="btn-corner btn--nav" data-wallet-connect aria-label="Connect wallet">
+        <span class="c c-tl" aria-hidden="true"></span>
+        <span class="c c-tr" aria-hidden="true"></span>
+        <span class="c c-bl" aria-hidden="true"></span>
+        <span class="c c-br" aria-hidden="true"></span><span data-wallet-label>Connect wallet</span></button>
+      <a class="btn-corner btn--nav" href="/">
+        <span class="c c-tl" aria-hidden="true"></span>
+        <span class="c c-tr" aria-hidden="true"></span>
+        <span class="c c-bl" aria-hidden="true"></span>
+        <span class="c c-br" aria-hidden="true"></span>Home</a>
+    </div>
+  </nav>
+
+  <div id="content">
+    <main class="site-main">
+      <div class="frame stack app-shell" data-app>
+
+        <section class="app-card-wrap" aria-labelledby="send-title">
+          <div class="panel send-card">
+
+            <div class="send-head">
+              <h1 class="send-title" id="send-title">Send</h1>
+              <span class="chip send-state" data-send-state hidden></span>
+            </div>
+
+            <!-- State 1. Compose -->
+            <div class="send-state-panel" data-state="compose">
+              <div class="field">
+                <label class="label" for="f-token">Token</label>
+                <select class="input-well" id="f-token" data-field="token"></select>
+              </div>
+
+              <div class="field">
+                <label class="label" for="f-to">To</label>
+                <input class="input-well" id="f-to" data-field="to" type="text" inputmode="text"
+                       autocomplete="off" spellcheck="false" placeholder="0x" aria-describedby="to-hint">
+                <span class="field-hint" id="to-hint" data-to-hint>Paste an address to check your list.</span>
+              </div>
+
+              <div class="field">
+                <label class="label" for="f-amount">Amount</label>
+                <input class="input-well" id="f-amount" data-field="amount" type="text" inputmode="decimal"
+                       autocomplete="off" spellcheck="false" placeholder="0.00">
+              </div>
+
+              <button type="button" class="btn-solid btn--block" data-action="review">Review</button>
+            </div>
+
+            <!-- State 2. Review -->
+            <div class="send-state-panel" data-state="review" hidden>
+              <div class="ledger">
+                <div class="ledger-row">
+                  <span class="k">Token</span>
+                  <span class="lead" aria-hidden="true"></span>
+                  <span class="v" data-review="token"></span>
+                </div>
+                <div class="ledger-row">
+                  <span class="k">To</span>
+                  <span class="lead" aria-hidden="true"></span>
+                  <code class="v" data-review="to"></code>
+                </div>
+                <div class="ledger-row">
+                  <span class="k">Amount</span>
+                  <span class="lead" aria-hidden="true"></span>
+                  <span class="v" data-review="amount"></span>
+                </div>
+              </div>
+
+              <div class="review-window" data-review-window hidden>
+                <div class="kwin" data-kerb-window data-dwell="20" data-autostart="false">
+                  <div class="kwin-row">
+                    <span class="label" data-kwin-label>Holding</span>
+                    <span class="kwin-time" data-kwin-time>00:20</span>
+                  </div>
+                  <div class="kwin-track" aria-hidden="true">
+                    <span class="kwin-fill" data-kwin-fill></span>
+                    <span class="kwin-stream stream-line" data-kwin-stream></span>
+                  </div>
+                </div>
+                <p class="send-caption">Cancel anytime before this closes.</p>
+              </div>
+
+              <div class="send-actions">
+                <button type="button" class="btn-ghost btn--md" data-action="back">Back</button>
+                <button type="button" class="btn-solid btn--md" data-action="confirm">Confirm</button>
+              </div>
+            </div>
+
+            <!-- State 3. Holding -->
+            <div class="send-state-panel" data-state="holding" hidden>
+              <div class="ledger">
+                <div class="ledger-row">
+                  <span class="k">To</span>
+                  <span class="lead" aria-hidden="true"></span>
+                  <code class="v" data-holding="to"></code>
+                </div>
+                <div class="ledger-row">
+                  <span class="k">Amount</span>
+                  <span class="lead" aria-hidden="true"></span>
+                  <span class="v" data-holding="amount"></span>
+                </div>
+              </div>
+
+              <div class="kwin" data-kerb-window data-dwell="20" data-autostart="false">
+                <div class="kwin-row">
+                  <span class="label" data-kwin-label>Holding</span>
+                  <span class="kwin-time" data-kwin-time>00:20</span>
+                </div>
+                <div class="kwin-track" aria-hidden="true">
+                  <span class="kwin-fill" data-kwin-fill></span>
+                  <span class="kwin-stream stream-line" data-kwin-stream></span>
+                </div>
+              </div>
+              <p class="send-caption">Cancel anytime before this closes.</p>
+
+              <div class="send-actions">
+                <button type="button" class="btn-ghost btn--md" data-action="cancel">Cancel</button>
+              </div>
+            </div>
+
+            <!-- State 4. Settled -->
+            <div class="send-state-panel" data-state="settled" hidden>
+              <div class="settled-mark">
+                <span class="pulse-dot" aria-hidden="true"></span>
+                <span class="settled-name">Settled</span>
+              </div>
+              <p class="send-caption">This address is on your list now.</p>
+
+              <div class="ledger">
+                <div class="ledger-row">
+                  <span class="k">To</span>
+                  <span class="lead" aria-hidden="true"></span>
+                  <code class="v" data-settled="to"></code>
+                </div>
+                <div class="ledger-row">
+                  <span class="k">Amount</span>
+                  <span class="lead" aria-hidden="true"></span>
+                  <span class="v" data-settled="amount"></span>
+                </div>
+              </div>
+
+              <div class="send-actions">
+                <button type="button" class="btn-solid btn--md" data-action="done">Done</button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <div class="wallet-banner" data-wallet-banner hidden></div>
+
+        <section class="contacts" aria-labelledby="contacts-title">
+          <div class="section-label">
+            <span class="label" id="contacts-title">[ Your list ]</span>
+          </div>
+          <ul class="cells contacts-list" data-contacts></ul>
+          <p class="contacts-empty" data-contacts-empty hidden>No contacts yet.</p>
+        </section>
+
+        <p class="app-notice">
+          Demo data. The wallet connects for real; sending, cancelling and
+          settling still run against demo state and sign nothing.
+        </p>
+
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<div class="toast-region" aria-live="polite"></div>
+
+<script type="module" src="../assets/js/main.js"></script>
+</body>
+</html>

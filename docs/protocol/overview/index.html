@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview | Kerb docs</title>
+<meta name="description" content="The split exists so the read surface can be rich without making the write surface large. KerbLens holds no state, custodies nothing, and can be redeployed">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Overview | Kerb docs">
+<meta property="og:description" content="The split exists so the read surface can be rich without making the write surface large. KerbLens holds no state, custodies nothing, and can be redeployed">
+<meta property="og:site_name" content="Kerb">
+<meta property="og:url" content="" data-site-url="/docs/protocol/overview">
+<link rel="canonical" href="" data-site-url="/docs/protocol/overview">
+<link rel="icon" href="../../../assets/img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/base.css">
+<link rel="stylesheet" href="../../../assets/css/components.css">
+<link rel="stylesheet" href="../../../assets/css/sections.css">
+<script>
+  try {
+    document.documentElement.dataset.theme =
+      localStorage.getItem('kerb-theme') === 'light' ? 'light' : 'dark';
+  } catch (e) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#content">Skip to content</a>
+
+<div class="page-frame">
+
+  <nav class="nav-morph site-nav" aria-label="Primary" data-nav>
+    <div class="nav-lead">
+      <a class="nav-brand" href="/">Kerb</a>
+    </div>
+
+    <div class="nav-desktop">
+      <a class="nav-link panel-hover" href="/#how">How it works</a>
+      <a class="nav-link panel-hover" href="/#limits">Limits</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
+    </div>
+
+    <div class="nav-tail">
+      <span class="nav-desktop-block">
+        <button type="button" class="icon-btn panel-hover" data-theme-toggle aria-label="Light theme" title="Light theme">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+            <polygon points="17 10 17 14 16 14 16 15 15 15 15 16 14 16 14 17 10 17 10 16 9 16 9 15 8 15 8 14 7 14 7 10 8 10 8 9 9 9 9 8 10 8 10 7 14 7 14 8 15 8 15 9 16 9 16 10 17 10"></polygon>
+            <path d="m21,11v-1h1v-1h1v-2h-3v-1h-2v-2h-1V1h-2v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-2v3h-1v2h-2v1H1v2h1v1h1v1h1v2h-1v1h-1v1h-1v2h3v1h2v2h1v3h2v-1h1v-1h1v-1h2v1h1v1h1v1h2v-3h1v-2h2v-1h3v-2h-1v-1h-1v-1h-1v-2h1Zm-3,4h-1v1h-1v1h-1v1h-6v-1h-1v-1h-1v-1h-1v-6h1v-1h1v-1h1v-1h6v1h1v1h1v1h1v6Z"></path>
+          </svg>
+        </button>
+      </span>
+      <a class="btn-solid btn--nav" href="/app" data-app-link>Open App</a>
+    </div>
+  </nav>
+
+  <div id="content">
+    <main class="site-main">
+      <div class="frame docs-shell">
+
+        <div class="docs-nav">
+          <details class="docs-nav-toggle">
+            <summary>Documentation</summary>
+            <div class="docs-nav-inner">
+<div class="docs-nav-group">
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs">Kerb</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Concepts</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/concepts/address-poisoning">Address poisoning</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/the-asymmetry">The asymmetry</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/dwell-window">The dwell window</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/trust-list">The trust list</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/threat-model">Threat model</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Protocol</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/protocol/overview" aria-current="page">Overview</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/lifecycle">Transfer lifecycle</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/state">State</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/parameters">Parameters</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/events-and-errors">Events and errors</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Implementation</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Integration</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/integration/frontend">Frontend</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Reference</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/reference/glossary">Glossary</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/faq">FAQ</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/limits">Honest limits</a></li>
+</ul></div>
+            </div>
+          </details>
+        </div>
+
+        <div class="docs-body">
+          <article class="docs-article">
+            <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Protocol</span><span class="sep">/</span><span>Overview</span></div>
+            <div class="docs-prose">
+<h1 id="protocol-overview">Protocol overview</h1>
+<h2 id="two-contracts">Two contracts<a class="headerlink" href="#two-contracts" title="Permanent link">#</a></h2>
+<div class="docs-table-wrap"><table>
+<thead>
+<tr>
+<th>Contract</th>
+<th>Role</th>
+<th>State</th>
+<th>Deployed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KerbCore</code></td>
+<td>Everything that writes. Escrow, holds, trust lists, dwell settings</td>
+<td>yes</td>
+<td>once, immutable</td>
+</tr>
+<tr>
+<td><code>KerbLens</code></td>
+<td>Everything that reads. Derived views for wallets and frontends</td>
+<td>no</td>
+<td>once, immutable</td>
+</tr>
+</tbody>
+</table></div>
+<p>The split exists so the read surface can be rich without making the write
+surface large. <code>KerbLens</code> holds no state, custodies nothing, and can be
+redeployed without touching <code>KerbCore</code> if a better read shape is wanted later.
+<code>KerbCore</code> cannot be redeployed in any meaningful sense, because the trust lists
+live in it.</p>
+<h2 id="what-kerbcore-has-and-does-not-have">What KerbCore has, and does not have<a class="headerlink" href="#what-kerbcore-has-and-does-not-have" title="Permanent link">#</a></h2>
+<pre><code class="language-solidity">contract KerbCore {
+    // no owner
+    // no admin role
+    // no pause
+    // no upgrade path, no proxy, no delegatecall
+    // no fee, no fee recipient, no treasury
+    // no oracle, no price feed
+    // no token
+    // no external dependency beyond the ERC20 interface
+}
+</code></pre>
+<p>Every one of those absences is load bearing. A pause function is a key that can
+freeze your funds. A fee recipient is an address that must be trusted. An
+upgrade path is permission to replace the rules after you have relied on them.
+The Kerb claim is that the only key affecting your Kerb state is your own, and
+each of these would falsify it.</p>
+<p>The practical consequence is that a bug cannot be patched. It can only be
+abandoned, by everyone moving to a new deployment and rebuilding their trust
+lists through fresh settled transfers. That trade is made deliberately and is
+why <a href="/docs/implementation/testing">Testing</a> is specified as tightly as it is.</p>
+<h2 id="data-ownership">Data ownership<a class="headerlink" href="#data-ownership" title="Permanent link">#</a></h2>
+<pre><code>KerbCore
+  |
+  +-- per sender
+  |     +-- dwell override            uint64, zero means use the protocol default
+  |     +-- trusted recipients        set of addresses
+  |     +-- pending hold ids          set of bytes32
+  |
+  +-- per hold, keyed by holdId
+  |     +-- sender, recipient, asset, amount, releaseAt, status
+  |
+  +-- per recipient and asset
+        +-- claimable balance         the pull fallback, see Assets
+</code></pre>
+<p>Nothing is keyed globally except the holds mapping, and a hold id is derived
+from the sender, so no two senders can collide.</p>
+<h2 id="the-write-surface">The write surface<a class="headerlink" href="#the-write-surface" title="Permanent link">#</a></h2>
+<p>Six functions. That is the entire mutable interface.</p>
+<div class="docs-table-wrap"><table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Caller</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>send</code></td>
+<td>anyone</td>
+<td>moves funds straight through, or opens a hold</td>
+</tr>
+<tr>
+<td><code>cancel</code></td>
+<td>the hold sender, before <code>releaseAt</code></td>
+<td>returns funds, trusts nothing</td>
+</tr>
+<tr>
+<td><code>settle</code></td>
+<td>anyone, at or after <code>releaseAt</code></td>
+<td>delivers funds, appends to the sender list</td>
+</tr>
+<tr>
+<td><code>forget</code></td>
+<td>anyone, for their own list</td>
+<td>removes a recipient from the caller list</td>
+</tr>
+<tr>
+<td><code>setDwell</code></td>
+<td>anyone, for themselves</td>
+<td>sets the caller dwell inside the fixed bounds</td>
+</tr>
+<tr>
+<td><code>claim</code></td>
+<td>a recipient owed a failed push</td>
+<td>withdraws the pull fallback balance</td>
+</tr>
+</tbody>
+</table></div>
+<p>Full signatures and semantics are in <a href="/docs/implementation/core">KerbCore</a>.</p>
+<h2 id="the-read-surface">The read surface<a class="headerlink" href="#the-read-surface" title="Permanent link">#</a></h2>
+<p><code>KerbCore</code> exposes its mappings as public getters. <code>KerbLens</code> wraps them in the
+shapes an interface actually wants: will this send be held, when would it
+release, what is on my list, what is pending. See
+<a href="/docs/implementation/lens">KerbLens</a>.</p>
+<h2 id="chain">Chain<a class="headerlink" href="#chain" title="Permanent link">#</a></h2>
+<div class="docs-table-wrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Network</td>
+<td>Robinhood Chain</td>
+</tr>
+<tr>
+<td>Chain id</td>
+<td>4663</td>
+</tr>
+<tr>
+<td>Native currency</td>
+<td>ETH, 18 decimals</td>
+</tr>
+</tbody>
+</table></div>
+<p>Addresses will be published in <code>config/kerb.config.json</code> in the web repository
+once deployment happens. The site renders <code>Coming Soon</code> and <code>Not deployed</code> until
+then, and nothing in the codebase hardcodes an address.</p>
+<p>Next: <a href="/docs/protocol/lifecycle">Transfer lifecycle</a>.</p>
+            </div>
+<nav class="docs-pager" aria-label="Page">
+<a class="panel panel-hover docs-pager-link" href="/docs/concepts/threat-model"><span class="label">Previous</span><span class="docs-pager-title">Threat model</span></a>
+<a class="panel panel-hover docs-pager-link docs-pager-link--next" href="/docs/protocol/lifecycle"><span class="label">Next</span><span class="docs-pager-title">Transfer lifecycle</span></a>
+</nav>
+          </article>
+        </div>
+
+<aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
+<ul>
+<li><a href="#two-contracts">Two contracts</a></li>
+<li><a href="#what-kerbcore-has-and-does-not-have">What KerbCore has, and does not have</a></li>
+<li><a href="#data-ownership">Data ownership</a></li>
+<li><a href="#the-write-surface">The write surface</a></li>
+<li><a href="#the-read-surface">The read surface</a></li>
+<li><a href="#chain">Chain</a></li>
+</ul>
+</div>
+</aside>
+
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<div class="toast-region" aria-live="polite"></div>
+
+<script type="module" src="../../../assets/js/main.js"></script>
+</body>
+</html>

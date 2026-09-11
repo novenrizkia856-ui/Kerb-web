@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The trust list | Kerb docs</title>
+<meta name="description" content="Each sender has a list of recipient addresses. The list is per sender: your list and mine are unrelated, and no address is globally trusted or globally sus">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The trust list | Kerb docs">
+<meta property="og:description" content="Each sender has a list of recipient addresses. The list is per sender: your list and mine are unrelated, and no address is globally trusted or globally sus">
+<meta property="og:site_name" content="Kerb">
+<meta property="og:url" content="" data-site-url="/docs/concepts/trust-list">
+<link rel="canonical" href="" data-site-url="/docs/concepts/trust-list">
+<link rel="icon" href="../../../assets/img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/base.css">
+<link rel="stylesheet" href="../../../assets/css/components.css">
+<link rel="stylesheet" href="../../../assets/css/sections.css">
+<script>
+  try {
+    document.documentElement.dataset.theme =
+      localStorage.getItem('kerb-theme') === 'light' ? 'light' : 'dark';
+  } catch (e) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#content">Skip to content</a>
+
+<div class="page-frame">
+
+  <nav class="nav-morph site-nav" aria-label="Primary" data-nav>
+    <div class="nav-lead">
+      <a class="nav-brand" href="/">Kerb</a>
+    </div>
+
+    <div class="nav-desktop">
+      <a class="nav-link panel-hover" href="/#how">How it works</a>
+      <a class="nav-link panel-hover" href="/#limits">Limits</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
+    </div>
+
+    <div class="nav-tail">
+      <span class="nav-desktop-block">
+        <button type="button" class="icon-btn panel-hover" data-theme-toggle aria-label="Light theme" title="Light theme">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+            <polygon points="17 10 17 14 16 14 16 15 15 15 15 16 14 16 14 17 10 17 10 16 9 16 9 15 8 15 8 14 7 14 7 10 8 10 8 9 9 9 9 8 10 8 10 7 14 7 14 8 15 8 15 9 16 9 16 10 17 10"></polygon>
+            <path d="m21,11v-1h1v-1h1v-2h-3v-1h-2v-2h-1V1h-2v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-2v3h-1v2h-2v1H1v2h1v1h1v1h1v2h-1v1h-1v1h-1v2h3v1h2v2h1v3h2v-1h1v-1h1v-1h2v1h1v1h1v1h2v-3h1v-2h2v-1h3v-2h-1v-1h-1v-1h-1v-2h1Zm-3,4h-1v1h-1v1h-1v1h-6v-1h-1v-1h-1v-1h-1v-6h1v-1h1v-1h1v-1h6v1h1v1h1v1h1v6Z"></path>
+          </svg>
+        </button>
+      </span>
+      <a class="btn-solid btn--nav" href="/app" data-app-link>Open App</a>
+    </div>
+  </nav>
+
+  <div id="content">
+    <main class="site-main">
+      <div class="frame docs-shell">
+
+        <div class="docs-nav">
+          <details class="docs-nav-toggle">
+            <summary>Documentation</summary>
+            <div class="docs-nav-inner">
+<div class="docs-nav-group">
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs">Kerb</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Concepts</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/concepts/address-poisoning">Address poisoning</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/the-asymmetry">The asymmetry</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/dwell-window">The dwell window</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/trust-list" aria-current="page">The trust list</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/threat-model">Threat model</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Protocol</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/protocol/overview">Overview</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/lifecycle">Transfer lifecycle</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/state">State</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/parameters">Parameters</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/events-and-errors">Events and errors</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Implementation</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Integration</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/integration/frontend">Frontend</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Reference</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/reference/glossary">Glossary</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/faq">FAQ</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/limits">Honest limits</a></li>
+</ul></div>
+            </div>
+          </details>
+        </div>
+
+        <div class="docs-body">
+          <article class="docs-article">
+            <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Concepts</span><span class="sep">/</span><span>The trust list</span></div>
+            <div class="docs-prose">
+<h1 id="the-trust-list">The trust list</h1>
+<p>Each sender has a list of recipient addresses. The list is per sender: your list
+and mine are unrelated, and no address is globally trusted or globally suspect.</p>
+<h2 id="the-only-way-in">The only way in<a class="headerlink" href="#the-only-way-in" title="Permanent link">#</a></h2>
+<p>An address is appended to your list when a hold you created <strong>settles</strong>. That is
+the sole write path. Specifically:</p>
+<ul>
+<li>Not when you create a hold. A hold that is cancelled leaves no trace.</li>
+<li>Not when you receive from an address. Inbound transfers never touch your list.</li>
+<li>Not by any call another account can make.</li>
+<li>Not by an administrator, because there is no administrative role.</li>
+<li>Not by a direct trust function, because there is not one. See
+  <a href="/docs/concepts/the-asymmetry">The asymmetry</a> for why that omission is deliberate.</li>
+</ul>
+<h2 id="the-only-way-out">The only way out<a class="headerlink" href="#the-only-way-out" title="Permanent link">#</a></h2>
+<p><code>forget(recipient)</code> removes an address from your list. It is callable only by
+you, for your own list.</p>
+<p>Removal is safe to expose in a way that addition is not. Adding an address
+removes friction and so can be weaponised. Removing an address adds friction
+back, so the worst an attacker could achieve by tricking you into calling it is
+to make your next transfer to that address wait fifteen minutes.</p>
+<p>After <code>forget</code>, the address is new again. The next transfer to it opens a fresh
+hold.</p>
+<h2 id="trust-is-per-address-not-per-asset">Trust is per address, not per asset<a class="headerlink" href="#trust-is-per-address-not-per-asset" title="Permanent link">#</a></h2>
+<p>The list stores recipients, not recipient and asset pairs. If you have settled a
+transfer of the native asset to an address, a later transfer of an ERC20 to the
+same address goes straight through.</p>
+<p>This is intentional. The thing you are being protected from is sending to the
+<strong>wrong address</strong>. Once you have demonstrated, with a completed transfer, that
+this address is one you meant, repeating that demonstration per asset adds
+friction without adding information.</p>
+<h2 id="the-dust-trust-risk">The dust trust risk<a class="headerlink" href="#the-dust-trust-risk" title="Permanent link">#</a></h2>
+<p>There is a real weakness here and it should be stated plainly.</p>
+<p>The list records that a transfer settled. It does not record how much. A
+transfer of one wei that settles trusts the recipient exactly as firmly as a
+transfer of a thousand ether.</p>
+<p>That means a malicious application which can get you to sign one tiny Kerb send
+to an attacker controlled address, and then wait out the dwell without you
+cancelling, has permanently placed that address on your list. Your next real
+transfer to it will not wait.</p>
+<p>Mitigations, in order of how much they actually help:</p>
+<ol>
+<li><strong>The dwell still applies to the dust transfer.</strong> The attacker has to get you
+   to sign, and then get you not to notice for fifteen minutes. The window works
+   the same way for a one wei send as for a large one.</li>
+<li><strong><code>forget</code> exists.</strong> The damage is reversible the moment it is noticed.</li>
+<li><strong>Frontends should show the list.</strong> An address list you never look at is an
+   address list you cannot audit. The Kerb app shows it by default.</li>
+</ol>
+<p><strong>Open question.</strong> Whether to record the settled amount alongside the entry, so
+a frontend can show "trusted on the strength of 0.000000000000000001 ETH" and
+let the user judge. This costs one storage slot per entry and adds no protocol
+complexity. It is likely worth doing. Not yet specified.</p>
+<h2 id="growth">Growth<a class="headerlink" href="#growth" title="Permanent link">#</a></h2>
+<p>The list grows by one entry per distinct recipient you ever settle to, and
+shrinks only when you call <code>forget</code>. It is unbounded in principle. In practice it
+is bounded by how many counterparties a person has, which is small.</p>
+<p>Enumeration is provided by <a href="/docs/implementation/lens">KerbLens</a> with offset and
+limit paging so that a large list never makes a read revert.</p>
+<p>Next: <a href="/docs/concepts/threat-model">Threat model</a>.</p>
+            </div>
+<nav class="docs-pager" aria-label="Page">
+<a class="panel panel-hover docs-pager-link" href="/docs/concepts/dwell-window"><span class="label">Previous</span><span class="docs-pager-title">The dwell window</span></a>
+<a class="panel panel-hover docs-pager-link docs-pager-link--next" href="/docs/concepts/threat-model"><span class="label">Next</span><span class="docs-pager-title">Threat model</span></a>
+</nav>
+          </article>
+        </div>
+
+<aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
+<ul>
+<li><a href="#the-only-way-in">The only way in</a></li>
+<li><a href="#the-only-way-out">The only way out</a></li>
+<li><a href="#trust-is-per-address-not-per-asset">Trust is per address, not per asset</a></li>
+<li><a href="#the-dust-trust-risk">The dust trust risk</a></li>
+<li><a href="#growth">Growth</a></li>
+</ul>
+</div>
+</aside>
+
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<div class="toast-region" aria-live="polite"></div>
+
+<script type="module" src="../../../assets/js/main.js"></script>
+</body>
+</html>

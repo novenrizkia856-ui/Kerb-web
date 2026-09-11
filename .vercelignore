@@ -1,0 +1,14 @@
+# Nothing here is part of the deployed site. It stays in the repository because
+# it is the record of how the site was built, but it is not served.
+
+# The build notes. notes/DESIGN-SYSTEM.md names the reference frontend the
+# design was extracted from, which belongs in version control for traceability
+# and does not belong on a public URL.
+notes/
+
+# Documentation source. The rendered pages under docs/ are what gets served, so
+# serving the markdown too would publish the same content at a second address.
+content/
+
+# Authoring tooling. It runs on a developer machine, never during deploy.
+tools/

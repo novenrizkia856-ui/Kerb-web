@@ -1,0 +1,1420 @@
+/* sections.css
+   Layout for Kerb's own sections, built from the reference's section shapes,
+   spacing scale and type scale. Every value traces to notes/DESIGN-SYSTEM.md
+   sections 2.2, 3.2 and 5.2. No new component is defined here: the surfaces,
+   buttons, chips, ledger rows and cell grids all come from components.css. */
+
+/* ============================================================================
+   Token CA strip. Brief 8.1. Built from the reference's section label bar,
+   which is the smallest existing full width surface treatment.
+   ========================================================================== */
+
+/* The strip takes the same height as the navigation so the two bars read as one
+   piece of chrome, and the fixed nav rests directly beneath it. */
+.ca-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 12px;
+  height: var(--nav-h);
+  padding-inline: 24px;
+  border-bottom: 1px dashed var(--line);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .ca-strip { padding-inline: 40px; }
+}
+
+.ca-strip .label { flex-shrink: 0; }
+
+.ca-strip .ca-value {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--value);
+  line-height: 1;
+}
+
+.ca-strip .lead {
+  flex: 1 1 0;
+  min-width: 0;
+  border-bottom: 1px dotted var(--line);
+}
+
+.ca-strip .ca-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The navigation is fixed, so on a page carrying the strip it rests below it and
+   floats free once the reference's own scroll threshold is passed. A sibling
+   combinator rather than :has(), so the offset does not depend on a selector
+   iOS Safari only gained in 15.4. Custom properties inherit, so the nav inside
+   the frame picks this up. */
+.ca-strip ~ .page-frame { --nav-rest-top: var(--nav-h); }
+
+/* ============================================================================
+   Page shell
+   ========================================================================== */
+
+.site-main {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 1200px;
+  padding-inline: 16px;
+}
+
+@media (min-width: 640px) {
+  .site-main { padding-inline: 24px; }
+}
+
+/* ============================================================================
+   Shared section furniture
+   ========================================================================== */
+
+.section-title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.section-lead {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+/* The standard section box. DESIGN-SYSTEM 3.2. */
+.numbers,
+.how,
+.props,
+.limits,
+.contracts {
+  padding: 40px 24px 48px;
+}
+
+@media (min-width: 640px) {
+  .numbers,
+  .how,
+  .props,
+  .limits,
+  .contracts {
+    padding-inline: 40px;
+  }
+}
+
+/* ============================================================================
+   1. Hero
+   ========================================================================== */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 80px 24px;
+}
+
+@media (min-width: 640px) {
+  .hero { padding: 96px 40px 80px; }
+}
+
+.hero-col {
+  position: relative;
+  z-index: 10;
+  margin-inline: auto;
+  display: flex;
+  max-width: 640px;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  text-align: center;
+}
+
+.hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--cell);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.hero-title {
+  margin: 0;
+  font-size: 36px;
+  line-height: 1.08;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+@media (min-width: 420px) {
+  .hero-title { font-size: 44px; }
+}
+
+@media (min-width: 640px) {
+  .hero-title { font-size: 62px; line-height: 1.05; }
+}
+
+.hero-lead {
+  margin: 0;
+  max-width: 520px;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+@media (min-width: 640px) {
+  .hero-lead { font-size: 17px; }
+}
+
+.hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+/* ============================================================================
+   Kerb visual A. The waiting window. Brief 8.3.
+   Built from P3, the travelling gradient along a hairline, plus P7 and P2.
+   ========================================================================== */
+
+.kwin {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 10px;
+  font-family: var(--font-mono);
+}
+
+.kwin--compact { max-width: 320px; }
+
+.kwin-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kwin-row .label { color: var(--state-wait); }
+
+.kwin-time {
+  font-size: 12px;
+  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+  color: var(--value);
+  line-height: 1;
+}
+
+.kwin-track {
+  position: relative;
+  height: 1px;
+  width: 100%;
+  background: var(--track);
+}
+
+/* The filled portion. Its lit band is slid in with background-position, the
+   same channel P3 uses, so no new primitive is introduced.
+
+   The image is twice the width of the track and coloured across its left half,
+   so a background-position-x of 100 percent parks the colour entirely off to
+   the left and 0 percent brings it fully across. Percentages resolve against
+   the positioning area minus the image width, which is why the image has to be
+   wider than the box for the position to move at all. */
+.kwin-fill {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(90deg, var(--state-wait) 0 50%, transparent 50%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  background-position-x: 100%;
+}
+
+/* The travelling pulse, P3 verbatim, tinted to the waiting state. */
+.kwin-stream {
+  position: absolute;
+  inset: 0;
+  background: none;
+}
+
+.kwin-stream::after {
+  background: linear-gradient(90deg, transparent, var(--state-wait) 50%, transparent);
+}
+
+.kwin[data-kwin-state="settled"] .kwin-row .label { color: var(--state-trust); }
+.kwin[data-kwin-state="settled"] .kwin-fill {
+  background-image: linear-gradient(90deg, var(--state-trust) 0 50%, transparent 50%);
+  background-position-x: 0%;
+}
+.kwin[data-kwin-state="settled"] .kwin-stream { display: none; }
+.kwin[data-kwin-state="settled"] .kwin-time { color: var(--state-trust); }
+
+.kwin[data-kwin-state="idle"] .kwin-stream { display: none; }
+
+/* ============================================================================
+   2. The asymmetry. Adapted from the reference's two column split.
+   ========================================================================== */
+
+.asym {
+  display: grid;
+}
+
+@media (min-width: 768px) {
+  .asym { grid-template-columns: minmax(0, 380px) 1fr; }
+}
+
+.asym-prose {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 32px;
+}
+
+@media (min-width: 640px) {
+  .asym-prose { padding: 48px 40px; }
+}
+
+.asym-prose .section-lead { padding-top: 8px; }
+
+.asym-stage {
+  display: grid;
+  gap: 24px;
+  padding: 40px 32px;
+  border-top: 1px solid var(--hairline);
+}
+
+@media (min-width: 640px) {
+  .asym-stage { padding: 48px 40px; }
+}
+
+@media (min-width: 768px) {
+  .asym-stage {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: none;
+    border-left: 1px solid var(--hairline);
+  }
+}
+
+.asym-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  min-height: 236px;
+}
+
+.asym-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.asym-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.asym-feed {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--hairline);
+  border-block: 1px solid var(--hairline);
+}
+
+.asym-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.asym-row .tag {
+  flex-shrink: 0;
+  font-size: 8px;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.asym-row[data-kind="fake"] { color: var(--state-danger); }
+.asym-row[data-kind="fake"] .tag { color: var(--state-danger); }
+.asym-row[data-kind="settled"] { color: var(--state-trust); }
+.asym-row[data-kind="settled"] .tag { color: var(--state-wait); }
+
+.asym-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--faint);
+}
+
+/* ============================================================================
+   3. Numbers
+   ========================================================================== */
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 36px 24px;
+  text-align: center;
+}
+
+.stat-fig {
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 640px) {
+  .stat-fig { font-size: 40px; }
+}
+
+.stat-cap {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.numbers-note {
+  margin: 0;
+  padding-top: 24px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--faint);
+}
+
+/* ============================================================================
+   4. How it works
+   ========================================================================== */
+
+.how-title,
+.props-title,
+.limits-title,
+.contracts-title {
+  padding-bottom: 32px;
+}
+
+.steps { margin: 0; padding: 0; list-style: none; }
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+}
+
+.step-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.step-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-lit);
+}
+
+.step-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.step-body {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.step--wait .kwin { padding-top: 6px; }
+
+.how-closing {
+  margin: 0;
+  padding-top: 24px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+/* ============================================================================
+   5. Properties and 6. Honest limits
+   ========================================================================== */
+
+.prop,
+.limit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+}
+
+.prop-name,
+.limit-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.prop-body,
+.limit-body {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* ============================================================================
+   7. Contracts
+   ========================================================================== */
+
+.contract-ledger { gap: 14px; }
+
+.contract-row { flex-wrap: wrap; }
+
+.contract-row .v { color: var(--value); }
+
+.contract-act { flex-shrink: 0; }
+
+/* ============================================================================
+   8. Footer
+   ========================================================================== */
+
+.site-footer {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  background: var(--bg);
+  padding-bottom: var(--mobile-nav-h);
+}
+
+.footer-base {
+  position: relative;
+  border-top: 1px solid var(--hairline);
+  background: var(--bg);
+}
+
+.footer-grid {
+  display: grid;
+  gap: 40px;
+  padding: 48px 8px 16px;
+}
+
+@media (min-width: 640px) {
+  .footer-grid { padding-inline: 24px; }
+}
+
+@media (min-width: 768px) {
+  .footer-grid {
+    grid-template-columns: 1.6fr auto;
+    gap: 80px;
+  }
+}
+
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.footer-wordmark-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+  font-size: 17px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.footer-tagline {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--value);
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.footer-link {
+  width: fit-content;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: color var(--dur) var(--ease);
+}
+
+.footer-link:hover { color: var(--text); }
+
+/* ============================================================================
+   App shell. Brief section 10.
+   ========================================================================== */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-card-wrap { padding: 40px 24px 24px; }
+
+@media (min-width: 640px) {
+  .app-card-wrap { padding: 48px 40px 24px; }
+}
+
+.send-card {
+  margin-inline: auto;
+  display: flex;
+  width: 100%;
+  max-width: 460px;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+}
+
+@media (min-width: 640px) {
+  .send-card { padding: 32px; }
+}
+
+.send-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.send-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.send-state[data-kind="new"] { border-color: var(--state-wait); color: var(--state-wait); }
+.send-state[data-kind="known"] { border-color: var(--state-trust); color: var(--state-trust); }
+
+.send-state-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.field-hint {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--faint);
+}
+
+.send-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.send-actions > * { flex: 1; }
+
+.send-caption {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.review-window {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settled-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settled-name {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--state-trust);
+}
+
+.contacts-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  grid-template-columns: 1fr;
+}
+
+.contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 14px 24px;
+}
+
+@media (min-width: 640px) {
+  .contact { padding-inline: 40px; }
+}
+
+.contact-addr {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .08em;
+  color: var(--value);
+}
+
+.contact-label {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.contact-when {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.contacts-empty {
+  margin: 0;
+  padding: 24px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+@media (min-width: 640px) {
+  .contacts-empty { padding-inline: 40px; }
+}
+
+.app-notice {
+  margin: 0;
+  padding: 24px;
+  border-top: 1px dashed var(--line);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+@media (min-width: 640px) {
+  .app-notice { padding-inline: 40px; }
+}
+
+/* ============================================================================
+   Toast. One shared aria-live region, brief section 12.
+   ========================================================================== */
+
+.toast-region {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + var(--mobile-nav-h));
+  translate: -50% 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 10px 16px;
+  animation: fade-in var(--dur-slow) var(--ease) both;
+}
+
+.toast[data-state="cancel"] { border-color: var(--state-danger); color: var(--state-danger); }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
+
+
+/* ============================================================================
+   DOCUMENTATION LAYOUT
+   Three columns in the shape ethereum.org uses: a navigation rail, a measured
+   content column, and an on this page rail. Values come from the reference:
+   the type scale in notes/DESIGN-SYSTEM.md 2.2, the 4px spacing scale in 3.3,
+   the border grammar in 3.5, and the colour tokens in tokens.css. The rail
+   links are .docs-rail-link, the reference's own component.
+   ========================================================================== */
+
+/* ============================================================================
+   Shell
+   ========================================================================== */
+
+.docs-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .docs-shell { grid-template-columns: 240px minmax(0, 1fr); }
+}
+
+@media (min-width: 1280px) {
+  .docs-shell { grid-template-columns: 240px minmax(0, 1fr) 208px; }
+}
+
+/* ============================================================================
+   Left rail
+   ========================================================================== */
+
+.docs-nav {
+  padding: 24px;
+  border-bottom: 1px dashed var(--line);
+}
+
+@media (min-width: 1024px) {
+  .docs-nav {
+    position: sticky;
+    top: calc(var(--nav-h) + 24px);
+    max-height: calc(100vh - var(--nav-h) - 48px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 32px 16px 32px 24px;
+    border-bottom: none;
+    border-right: 1px dashed var(--line);
+  }
+}
+
+.docs-nav-group + .docs-nav-group { padding-top: 20px; }
+
+.docs-nav-group > .label {
+  display: block;
+  padding: 0 12px 8px;
+}
+
+.docs-nav-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* On narrow screens the rail collapses into a disclosure. No script needed,
+   and a details element is keyboard operable on its own. */
+.docs-nav-toggle {
+  display: block;
+}
+
+.docs-nav-toggle > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  list-style: none;
+  padding: 4px 0;
+}
+
+.docs-nav-toggle > summary::-webkit-details-marker { display: none; }
+
+.docs-nav-toggle > summary::after {
+  content: "+";
+  color: var(--faint);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.docs-nav-toggle[open] > summary::after { content: "\2212"; }
+
+.docs-nav-toggle > .docs-nav-inner { padding-top: 16px; }
+
+@media (min-width: 1024px) {
+  .docs-nav-toggle > summary { display: none; }
+  .docs-nav-toggle > .docs-nav-inner { padding-top: 0; }
+}
+
+/* ============================================================================
+   Content column
+   ========================================================================== */
+
+.docs-body {
+  min-width: 0;
+  padding: 32px 24px 64px;
+}
+
+@media (min-width: 640px) {
+  .docs-body { padding-inline: 40px; }
+}
+
+.docs-article {
+  max-width: 720px;
+}
+
+.docs-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 20px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.docs-crumbs a { color: var(--muted); }
+.docs-crumbs a:hover { color: var(--text); }
+.docs-crumbs .sep { color: var(--faint); }
+
+/* ============================================================================
+   Prose
+   ========================================================================== */
+
+.docs-prose h4 {
+  margin-top: 28px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.docs-prose p { margin: 0; }
+
+.docs-prose strong { color: var(--text); font-weight: 500; }
+
+/* A link inside a paragraph carries a permanent underline, not just a colour.
+   Colour alone fails WCAG 1.4.1 for links in a text block, which axe reports as
+   link-in-text-block. The rule is the reference's own 1px border at an existing
+   token, strengthening on hover. */
+.docs-prose a {
+  color: var(--accent-text);
+  border-bottom: 1px solid var(--accent-deep);
+  transition: border-color var(--dur) var(--ease);
+}
+
+.docs-prose a:hover { border-bottom-color: var(--accent-text); }
+
+/* Headings and pager cards are not text blocks, so they keep a clean edge. */
+.docs-prose :is(h1, h2, h3, h4) a,
+.docs-prose .headerlink { border-bottom: none; }
+
+.docs-prose ul,
+.docs-prose ol {
+  margin: 0;
+  padding-left: 22px;
+  list-style: disc;
+}
+
+.docs-prose ol { list-style: decimal; }
+.docs-prose li + li { margin-top: 8px; }
+.docs-prose li::marker { color: var(--faint); }
+
+.docs-prose blockquote {
+  margin: 0;
+  padding: 4px 0 4px 20px;
+  border-left: 1px solid var(--accent-deep);
+  color: var(--text);
+}
+
+.docs-prose hr {
+  border: none;
+  border-top: 1px dashed var(--line);
+  margin: 40px 0;
+}
+
+/* --- code, from the reference's own pre treatment ------------------------ */
+
+.docs-prose code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--value);
+  background: var(--cell);
+  border-radius: 2px;
+  padding: 2px 5px;
+}
+
+.docs-prose pre {
+  margin: 0;
+  overflow-x: auto;
+  padding: 20px;
+  background: var(--cell);
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+}
+
+.docs-prose pre code {
+  font-size: 12.5px;
+  line-height: 2;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  white-space: pre;
+}
+
+/* --- tables, built from the hairline grammar ----------------------------- */
+
+.docs-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+}
+
+.docs-prose table {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.docs-prose thead th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 400;
+  color: var(--faint);
+  background: var(--surface);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
+  white-space: nowrap;
+}
+
+.docs-prose tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+  color: var(--muted);
+}
+
+.docs-prose tbody tr:last-child td { border-bottom: none; }
+.docs-prose tbody td:first-child { color: var(--value); }
+
+/* --- heading anchors ----------------------------------------------------- */
+
+.docs-prose :is(h2, h3, h4) { scroll-margin-top: calc(var(--nav-h) + 24px); }
+
+.docs-prose .headerlink {
+  margin-left: 8px;
+  color: var(--faint);
+  border-bottom: none;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
+  font-weight: 400;
+}
+
+.docs-prose :is(h2, h3, h4):hover .headerlink,
+.docs-prose .headerlink:focus-visible { opacity: 1; }
+
+/* ============================================================================
+   Right rail, on this page
+   ========================================================================== */
+
+.docs-toc {
+  padding: 0 24px 32px;
+}
+
+@media (min-width: 640px) {
+  .docs-toc { padding-inline: 40px; }
+}
+
+@media (min-width: 1280px) {
+  .docs-toc {
+    position: sticky;
+    top: calc(var(--nav-h) + 24px);
+    max-height: calc(100vh - var(--nav-h) - 48px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 32px 24px 32px 0;
+  }
+}
+
+.docs-toc .label { display: block; padding-bottom: 10px; }
+
+.docs-toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--hairline);
+}
+
+.docs-toc ul ul { border-left: none; padding-left: 12px; }
+
+.docs-toc a {
+  display: block;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  transition: color var(--dur) var(--ease);
+}
+
+.docs-toc a:hover { color: var(--text); }
+
+/* ============================================================================
+   Previous and next
+   ========================================================================== */
+
+.docs-pager {
+  display: grid;
+  gap: 12px;
+  margin-top: 56px;
+  padding-top: 32px;
+  border-top: 1px dashed var(--line);
+}
+
+@media (min-width: 640px) {
+  .docs-pager { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.docs-pager-link {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 20px;
+}
+
+.docs-pager-link .label { color: var(--faint); }
+
+.docs-pager-link .docs-pager-title {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.docs-pager-link--next { text-align: right; }
+.docs-pager-link--next.docs-pager-link { align-items: flex-end; }
+
+@media (min-width: 640px) {
+  .docs-pager-link--next:only-child { grid-column: 2; }
+}
+
+/* ============================================================================
+   Floating cards in the hero.
+   The reference drifts collectible thumbnails here. Those were its artwork and
+   were removed in Phase 0, so the drift primitive P6 carries Kerb's own
+   vocabulary instead: small address cards in the three semantic states. No
+   image files, no requests, and the decoration says what the product does.
+   Positions, tilts and negative delays are the reference's own, listed in
+   notes/DESIGN-SYSTEM.md 4.2 D.
+   ========================================================================== */
+
+/* The reference floated 56 to 86px thumbnails and could afford to start them at
+   1024. A card wide enough to hold a truncated address is 152px, which collides
+   with the 640px hero column until 1280. Measured, not guessed. */
+.drifter--xl,
+.drifter--2xl { display: none; }
+
+@media (min-width: 1280px) {
+  .drifter--xl { display: block; }
+}
+
+@media (min-width: 1536px) {
+  .drifter--2xl { display: block; }
+}
+
+.drift-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 152px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  box-shadow: var(--nav-float-shadow);
+}
+
+.drift-card .addr {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  line-height: 1;
+  color: var(--value);
+}
+
+.drift-card .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drift-card .dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--muted);
+}
+
+.drift-card .tag {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--faint);
+}
+
+.drift-card[data-kind="wait"]  .dot { background: var(--state-wait); }
+.drift-card[data-kind="wait"]  .tag { color: var(--state-wait); }
+.drift-card[data-kind="trust"] .dot { background: var(--state-trust); }
+.drift-card[data-kind="trust"] .tag { color: var(--value); }
+.drift-card[data-kind="fake"]  .dot { background: var(--state-danger); }
+.drift-card[data-kind="fake"]  .tag { color: var(--state-danger); }
+
+/* ============================================================================
+   Section reveals.
+   Items start hidden only when script is running, so a page with JavaScript
+   off shows everything. The tween is .fade-in, the reference's own class,
+   whose both fill lets a delay hold the first keyframe.
+   ========================================================================== */
+
+[data-js="on"] [data-reveal]:not(.is-revealed) { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-js="on"] [data-reveal] { opacity: 1; }
+}
+
+/* ============================================================================
+   Closing call to action. The reference's own footer CTA shape and values.
+   ========================================================================== */
+
+.cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 96px 24px 80px;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .cta { padding-inline: 40px; }
+}
+
+.cta-title {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.05;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+@media (min-width: 640px) {
+  .cta-title { font-size: 40px; }
+}
+
+.cta-lead {
+  margin: 0;
+  max-width: 460px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+/* ============================================================================
+   Floating cards in the hero.
+   The reference drifts collectible thumbnails here. Those were its artwork and
+   were removed in Phase 0, so the drift primitive P6 carries Kerb's own
+   vocabulary instead: small address cards in the three semantic states. No
+   image files, no requests, and the decoration says what the product does.
+   Positions, tilts and negative delays are the reference's own, listed in
+   notes/DESIGN-SYSTEM.md 4.2 D.
+   ========================================================================== */
+
+.drifter--lg,
+.drifter--xl { display: none; }
+
+@media (min-width: 1024px) {
+  .drifter--lg { display: block; }
+}
+
+@media (min-width: 1280px) {
+  .drifter--xl { display: block; }
+}
+
+.drift-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 152px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  box-shadow: var(--nav-float-shadow);
+}
+
+.drift-card .addr {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  line-height: 1;
+  color: var(--value);
+}
+
+.drift-card .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drift-card .dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--muted);
+}
+
+.drift-card .tag {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--faint);
+}
+
+.drift-card[data-kind="wait"]  .dot { background: var(--state-wait); }
+.drift-card[data-kind="wait"]  .tag { color: var(--state-wait); }
+.drift-card[data-kind="trust"] .dot { background: var(--state-trust); }
+.drift-card[data-kind="trust"] .tag { color: var(--value); }
+.drift-card[data-kind="fake"]  .dot { background: var(--state-danger); }
+.drift-card[data-kind="fake"]  .tag { color: var(--state-danger); }
+
+/* ============================================================================
+   Section reveals.
+   Items start hidden only when script is running, so a page with JavaScript
+   off shows everything. The tween itself is .fade-in, the reference's own
+   class, whose `both` fill lets a delay hold the first keyframe.
+   ========================================================================== */
+
+[data-js="on"] [data-reveal]:not(.is-revealed) { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-js="on"] [data-reveal] { opacity: 1; }
+}
+
+/* ============================================================================
+   Closing call to action. The reference's own footer CTA shape and values.
+   ========================================================================== */
+
+.cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 96px 24px 80px;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .cta { padding-inline: 40px; }
+}
+
+.cta-title {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.05;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+@media (min-width: 640px) {
+  .cta-title { font-size: 40px; }
+}
+
+.cta-lead {
+  margin: 0;
+  max-width: 460px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}

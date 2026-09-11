@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KerbCore | Kerb docs</title>
+<meta name="description" content="The only contract that holds state or custodies value.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="KerbCore | Kerb docs">
+<meta property="og:description" content="The only contract that holds state or custodies value.">
+<meta property="og:site_name" content="Kerb">
+<meta property="og:url" content="" data-site-url="/docs/implementation/core">
+<link rel="canonical" href="" data-site-url="/docs/implementation/core">
+<link rel="icon" href="../../../assets/img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/base.css">
+<link rel="stylesheet" href="../../../assets/css/components.css">
+<link rel="stylesheet" href="../../../assets/css/sections.css">
+<script>
+  try {
+    document.documentElement.dataset.theme =
+      localStorage.getItem('kerb-theme') === 'light' ? 'light' : 'dark';
+  } catch (e) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#content">Skip to content</a>
+
+<div class="page-frame">
+
+  <nav class="nav-morph site-nav" aria-label="Primary" data-nav>
+    <div class="nav-lead">
+      <a class="nav-brand" href="/">Kerb</a>
+    </div>
+
+    <div class="nav-desktop">
+      <a class="nav-link panel-hover" href="/#how">How it works</a>
+      <a class="nav-link panel-hover" href="/#limits">Limits</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
+    </div>
+
+    <div class="nav-tail">
+      <span class="nav-desktop-block">
+        <button type="button" class="icon-btn panel-hover" data-theme-toggle aria-label="Light theme" title="Light theme">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+            <polygon points="17 10 17 14 16 14 16 15 15 15 15 16 14 16 14 17 10 17 10 16 9 16 9 15 8 15 8 14 7 14 7 10 8 10 8 9 9 9 9 8 10 8 10 7 14 7 14 8 15 8 15 9 16 9 16 10 17 10"></polygon>
+            <path d="m21,11v-1h1v-1h1v-2h-3v-1h-2v-2h-1V1h-2v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-2v3h-1v2h-2v1H1v2h1v1h1v1h1v2h-1v1h-1v1h-1v2h3v1h2v2h1v3h2v-1h1v-1h1v-1h2v1h1v1h1v1h2v-3h1v-2h2v-1h3v-2h-1v-1h-1v-1h-1v-2h1Zm-3,4h-1v1h-1v1h-1v1h-6v-1h-1v-1h-1v-1h-1v-6h1v-1h1v-1h1v-1h6v1h1v1h1v1h1v6Z"></path>
+          </svg>
+        </button>
+      </span>
+      <a class="btn-solid btn--nav" href="/app" data-app-link>Open App</a>
+    </div>
+  </nav>
+
+  <div id="content">
+    <main class="site-main">
+      <div class="frame docs-shell">
+
+        <div class="docs-nav">
+          <details class="docs-nav-toggle">
+            <summary>Documentation</summary>
+            <div class="docs-nav-inner">
+<div class="docs-nav-group">
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs">Kerb</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Concepts</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/concepts/address-poisoning">Address poisoning</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/the-asymmetry">The asymmetry</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/dwell-window">The dwell window</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/trust-list">The trust list</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/threat-model">Threat model</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Protocol</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/protocol/overview">Overview</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/lifecycle">Transfer lifecycle</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/state">State</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/parameters">Parameters</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/events-and-errors">Events and errors</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Implementation</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/implementation/core" aria-current="page">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Integration</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/integration/frontend">Frontend</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Reference</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/reference/glossary">Glossary</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/faq">FAQ</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/limits">Honest limits</a></li>
+</ul></div>
+            </div>
+          </details>
+        </div>
+
+        <div class="docs-body">
+          <article class="docs-article">
+            <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Implementation</span><span class="sep">/</span><span>KerbCore</span></div>
+            <div class="docs-prose">
+<h1 id="kerbcore">KerbCore</h1>
+<p>The only contract that holds state or custodies value.</p>
+<h2 id="interface">Interface<a class="headerlink" href="#interface" title="Permanent link">#</a></h2>
+<pre><code class="language-solidity">// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+interface IKerbCore {
+    // --- constants -----------------------------------------------------
+    function DEFAULT_DWELL() external view returns (uint64);
+    function MIN_DWELL()     external view returns (uint64);
+    function MAX_DWELL()     external view returns (uint64);
+
+    // --- writes --------------------------------------------------------
+    function send(address recipient, address asset, uint256 amount)
+        external payable returns (bytes32 holdId);
+
+    function cancel(bytes32 holdId) external;
+    function settle(bytes32 holdId) external;
+    function forget(address recipient) external;
+    function setDwell(uint64 dwellSeconds) external;
+    function claim(address asset) external;
+
+    // --- reads ---------------------------------------------------------
+    function holdIdOf(address sender, address recipient, address asset)
+        external pure returns (bytes32);
+
+    function holdOf(bytes32 holdId) external view returns (
+        address sender, address recipient, address asset,
+        uint256 amount, uint64 releaseAt, uint8 status
+    );
+
+    function isTrusted(address sender, address recipient) external view returns (bool);
+    function trustedCount(address sender) external view returns (uint256);
+    function trustedAt(address sender, uint256 index) external view returns (address);
+    function pendingCount(address sender) external view returns (uint256);
+    function pendingAt(address sender, uint256 index) external view returns (bytes32);
+    function dwellOf(address sender) external view returns (uint64);
+    function claimableOf(address recipient, address asset) external view returns (uint256);
+}
+</code></pre>
+<p><code>address asset</code> is <code>address(0)</code> for the native asset, and the token address for
+an ERC20.</p>
+<h2 id="send">send<a class="headerlink" href="#send" title="Permanent link">#</a></h2>
+<pre><code class="language-solidity">function send(address recipient, address asset, uint256 amount)
+    external payable nonReentrant returns (bytes32 holdId)
+{
+    if (recipient == address(0))  revert ZeroRecipient();
+    if (recipient == msg.sender)  revert SelfSend();
+    if (amount == 0)              revert ZeroAmount();
+
+    bool native = asset == address(0);
+    if (native) {
+        if (msg.value != amount) revert ValueMismatch();
+    } else {
+        if (msg.value != 0)      revert NativeNotAccepted();
+    }
+
+    if (_trusted[msg.sender].contains(recipient)) {
+        // straight through, no storage written
+        if (native) {
+            _pushNative(recipient, amount);   // reverts on failure, see below
+        } else {
+            IERC20(asset).safeTransferFrom(msg.sender, recipient, amount);
+        }
+        emit Sent(msg.sender, recipient, asset, amount);
+        return bytes32(0);
+    }
+
+    holdId = holdIdOf(msg.sender, recipient, asset);
+    if (_holds[holdId].status == STATUS_PENDING) revert HoldPending();
+
+    uint256 received = amount;
+    if (!native) {
+        uint256 before = IERC20(asset).balanceOf(address(this));
+        IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
+        received = IERC20(asset).balanceOf(address(this)) - before;
+        if (received == 0) revert ZeroAmount();
+    }
+
+    uint64 releaseAt = uint64(block.timestamp) + dwellOf(msg.sender);
+
+    _holds[holdId] = Hold({
+        sender:    msg.sender,
+        releaseAt: releaseAt,
+        status:    STATUS_PENDING,
+        recipient: recipient,
+        asset:     asset,
+        amount:    received
+    });
+    _pending[msg.sender].add(holdId);
+
+    emit Held(holdId, msg.sender, recipient, asset, received, releaseAt);
+}
+</code></pre>
+<p>Three details worth defending.</p>
+<p><strong><code>received</code> rather than <code>amount</code>.</strong> A fee on transfer token delivers less than
+was requested. Recording the requested amount would make the contract insolvent
+against invariant 3 the moment such a token is used. Measuring the balance delta
+is the only correct thing to do here. See <a href="/docs/implementation/assets">Assets</a>.</p>
+<p><strong>The straight through path does not touch the contract.</strong> For an ERC20 it is a
+single <code>transferFrom</code> from sender to recipient. <code>KerbCore</code> never holds the
+token, so it cannot lose it, and the gas is close to a bare transfer.</p>
+<p><strong>A failed native push on the straight through path reverts.</strong> It does not fall
+back to <code>claimable</code>. On this path the sender is present and can react, so
+failing loudly is better than quietly parking value in a contract.</p>
+<h2 id="cancel">cancel<a class="headerlink" href="#cancel" title="Permanent link">#</a></h2>
+<pre><code class="language-solidity">function cancel(bytes32 holdId) external nonReentrant {
+    Hold memory h = _holds[holdId];
+    if (h.status != STATUS_PENDING)         revert HoldNotFound();
+    if (h.sender != msg.sender)             revert NotSender();
+    if (block.timestamp &gt;= h.releaseAt)     revert WindowClosed();
+
+    _pending[h.sender].remove(holdId);
+    delete _holds[holdId];
+
+    if (h.asset == address(0)) {
+        _pushNative(h.sender, h.amount);
+    } else {
+        IERC20(h.asset).safeTransfer(h.sender, h.amount);
+    }
+
+    emit Cancelled(holdId, h.sender, h.recipient, h.asset, h.amount);
+}
+</code></pre>
+<p>State is cleared before value moves. A reentrant call arriving during the
+refund finds <code>STATUS_NONE</code> and reverts with <code>HoldNotFound</code>, so the guard is
+belt and braces rather than the only defence.</p>
+<p>A failed native refund on cancel reverts rather than falling back. The sender
+asked for their money back and is present in the transaction, so a silent
+fallback would hide a problem they need to know about.</p>
+<h2 id="settle">settle<a class="headerlink" href="#settle" title="Permanent link">#</a></h2>
+<pre><code class="language-solidity">function settle(bytes32 holdId) external nonReentrant {
+    Hold memory h = _holds[holdId];
+    if (h.status != STATUS_PENDING)     revert HoldNotFound();
+    if (block.timestamp &lt; h.releaseAt)  revert WindowOpen();
+
+    _pending[h.sender].remove(holdId);
+    delete _holds[holdId];
+
+    if (_trusted[h.sender].add(h.recipient)) {
+        emit Trusted(h.sender, h.recipient);
+    }
+
+    bool delivered = true;
+    if (h.asset == address(0)) {
+        delivered = _tryPushNative(h.recipient, h.amount);
+        if (!delivered) _claimable[h.recipient][address(0)] += h.amount;
+    } else {
+        IERC20(h.asset).safeTransfer(h.recipient, h.amount);
+    }
+
+    emit Settled(holdId, h.sender, h.recipient, h.asset, h.amount, delivered);
+}
+</code></pre>
+<p><code>settle</code> is permissionless on purpose. The recipient must never need the sender
+to cooperate in order to be paid, and a hold whose only settler was the sender
+would be a hold the sender could abandon.</p>
+<p><code>_trusted.add</code> returns whether the element was newly inserted, so <code>Trusted</code> is
+emitted exactly once per address per sender. See
+<a href="/docs/protocol/events-and-errors">Events and errors</a>.</p>
+<h2 id="forget-setdwell-claim">forget, setDwell, claim<a class="headerlink" href="#forget-setdwell-claim" title="Permanent link">#</a></h2>
+<pre><code class="language-solidity">function forget(address recipient) external {
+    if (_trusted[msg.sender].remove(recipient)) {
+        emit Forgotten(msg.sender, recipient);
+    }
+}
+
+function setDwell(uint64 dwellSeconds) external {
+    if (dwellSeconds != 0 &amp;&amp; (dwellSeconds &lt; MIN_DWELL || dwellSeconds &gt; MAX_DWELL)) {
+        revert DwellOutOfRange();
+    }
+    _dwell[msg.sender] = dwellSeconds;
+    emit DwellSet(msg.sender, dwellSeconds);
+}
+
+function claim(address asset) external nonReentrant {
+    uint256 amount = _claimable[msg.sender][asset];
+    if (amount == 0) revert NothingToClaim();
+    _claimable[msg.sender][asset] = 0;
+
+    if (asset == address(0)) {
+        _pushNative(msg.sender, amount);
+    } else {
+        IERC20(asset).safeTransfer(msg.sender, amount);
+    }
+    emit Claimed(msg.sender, asset, amount);
+}
+</code></pre>
+<p><code>forget</code> is a no op on an absent entry, and emits nothing in that case.</p>
+<h2 id="native-transfer-helpers">Native transfer helpers<a class="headerlink" href="#native-transfer-helpers" title="Permanent link">#</a></h2>
+<pre><code class="language-solidity">function _tryPushNative(address to, uint256 amount) private returns (bool ok) {
+    (ok, ) = to.call{value: amount}(&quot;&quot;);
+}
+
+function _pushNative(address to, uint256 amount) private {
+    if (!_tryPushNative(to, amount)) revert TransferFailed();
+}
+</code></pre>
+<p>A full gas <code>call</code> is used rather than <code>transfer</code> or <code>send</code>. The 2300 gas stipend
+is a historical artefact that breaks legitimate recipient contracts, and the
+reentrancy it was meant to prevent is handled here by clearing state first and
+by the guard.</p>
+<h2 id="receive">Receive<a class="headerlink" href="#receive" title="Permanent link">#</a></h2>
+<pre><code class="language-solidity">receive() external payable {
+    revert NativeNotAccepted();
+}
+</code></pre>
+<p>The contract must not accept a bare transfer. Native value only enters through
+<code>send</code>, where it is attached to a hold. Anything else would be untracked against
+invariant 3 and unrecoverable, since there is no sweep function and no owner.</p>
+<p>Next: <a href="/docs/implementation/lens">KerbLens</a>.</p>
+            </div>
+<nav class="docs-pager" aria-label="Page">
+<a class="panel panel-hover docs-pager-link" href="/docs/protocol/events-and-errors"><span class="label">Previous</span><span class="docs-pager-title">Events and errors</span></a>
+<a class="panel panel-hover docs-pager-link docs-pager-link--next" href="/docs/implementation/lens"><span class="label">Next</span><span class="docs-pager-title">KerbLens</span></a>
+</nav>
+          </article>
+        </div>
+
+<aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
+<ul>
+<li><a href="#interface">Interface</a></li>
+<li><a href="#send">send</a></li>
+<li><a href="#cancel">cancel</a></li>
+<li><a href="#settle">settle</a></li>
+<li><a href="#forget-setdwell-claim">forget, setDwell, claim</a></li>
+<li><a href="#native-transfer-helpers">Native transfer helpers</a></li>
+<li><a href="#receive">Receive</a></li>
+</ul>
+</div>
+</aside>
+
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<div class="toast-region" aria-live="polite"></div>
+
+<script type="module" src="../../../assets/js/main.js"></script>
+</body>
+</html>

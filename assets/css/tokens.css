@@ -1,0 +1,125 @@
+/* tokens.css
+   Every colour, easing curve and duration in this project lives here and nowhere
+   else. No other stylesheet may contain a hex value.
+
+   Colour values are the Phase 2 refinement recorded in notes/PALETTE.md, run on
+   the palette extracted in notes/DESIGN-SYSTEM.md section 1. Motion, type and
+   chrome values are the reference's own, unchanged. */
+
+:root {
+  color-scheme: dark;
+
+  /* --- surfaces, ladder separated by 3.0 percent lightness (PALETTE step 2) --- */
+  --bg: #080404;          /* page base, never raised */
+  --well: #0e0e0e;        /* recessed, inputs */
+  --surface: #171414;     /* panels */
+  --cell: #1d1d1d;        /* raised */
+
+  /* --- separation --- */
+  --hairline: #ffffff1a;
+  --line: #303030;
+
+  /* --- text --- */
+  --text: #ffffff;
+  --value: #d9d9d9;
+  --muted: #929292;
+  --faint: #ffffff75;
+
+  /* --- inverted surface, split from --text and --bg (PALETTE step 1) --- */
+  --solid: #ffffff;
+  --solid-ink: #080404;
+
+  /* --- accent ramp, hue 198, saturation 66 percent -------------------------
+     The accent moved off orange because the old hue 31.6 sat almost on top of
+     the waiting state at hue 38.5, so a focus ring and a transfer in its
+     cancellation window read as the same colour. Hue 198 is clear of all three
+     semantic states: wait 38.5, danger 0, trust neutral. Saturation stays at
+     the 66 percent the Phase 2 restraint step set. See notes/PALETTE.md. */
+  --accent: #2ba1d4;      /* fills, strokes, gradient stops */
+  --accent-text: #2ba1d4; /* accent used as text or as a line that must read */
+  --accent-lit: #5eb8de;  /* highlight, numerals */
+  --accent-deep: #227da4; /* outline only */
+
+  /* --- ink on accent --- */
+  --ink: #000000;
+
+  /* --- semantic states (PALETTE step 5). Each means one thing. Never decorative. --- */
+  --warn: #daa649;
+  --state-wait: var(--warn);    /* a transfer inside its cancellation window */
+  --state-trust: var(--text);   /* an address on your list */
+  --state-danger: #dd5858;      /* a cancelled or dangerous action */
+
+  /* --- washes and tracks --- */
+  --track: #ffffff24;
+  --backdrop: #ffffff12;
+
+  /* --- elevation --- */
+  --nav-float-shadow: 0 14px 36px #00000073;
+
+  /* --- motion constants (DESIGN-SYSTEM 4.1) --- */
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --dur: .22s;
+  --dur-slow: .38s;
+
+  /* --- type stacks (DESIGN-SYSTEM 2.1) --- */
+  --font-display: "Geist", "Geist Fallback", system-ui, -apple-system, sans-serif;
+  --font-sans: "Geist", "Geist Fallback", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* --- chrome heights (DESIGN-SYSTEM 3.1) --- */
+  --nav-h: 54px;
+  --mobile-nav-h: calc(56px + env(safe-area-inset-bottom, 0px));
+  /* Where the fixed nav sits before it detaches. The reference rests it at 0.
+     A page carrying the token strip raises it by one bar height. */
+  --nav-rest-top: 0px;
+
+  /* --- typer per element defaults (DESIGN-SYSTEM 4.2 A) --- */
+  --typer-fg: var(--text);
+  --typer-bg: var(--bg);
+  --typer-accent: var(--accent);
+  --typer-accent-text: var(--accent-text);
+  --typer-accent-ink: var(--ink);
+  --typer-radius: 4px;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --nav-h: 62px;
+    --mobile-nav-h: 0px;
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #faf7f5;
+  --well: #eae4df;
+  --surface: #ffffff;
+  --cell: #f0ece8;
+
+  --hairline: #0000001a;
+  --line: #c4bfbc;
+
+  --text: #16130f;
+  --value: #2a2622;
+  --muted: #5e635e;
+  --faint: #14100c98;
+
+  --solid: #16130f;
+  --solid-ink: #faf7f5;
+
+  --accent: #2ba1d4;
+  --accent-text: #1b6483;
+  --accent-lit: #1d6c8e;
+  --accent-deep: #17546e;
+
+  --ink: #000000;
+
+  --warn: #9a551f;
+  --state-danger: #c42828;
+
+  --track: #0000001f;
+  --backdrop: #0000000f;
+
+  --nav-float-shadow: 0 14px 32px #1f160e24;
+}

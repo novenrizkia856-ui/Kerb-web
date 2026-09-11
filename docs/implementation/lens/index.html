@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KerbLens | Kerb docs</title>
+<meta name="description" content="A stateless read helper. It custodies nothing, writes nothing, and can be replaced without touching KerbCore.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="KerbLens | Kerb docs">
+<meta property="og:description" content="A stateless read helper. It custodies nothing, writes nothing, and can be replaced without touching KerbCore.">
+<meta property="og:site_name" content="Kerb">
+<meta property="og:url" content="" data-site-url="/docs/implementation/lens">
+<link rel="canonical" href="" data-site-url="/docs/implementation/lens">
+<link rel="icon" href="../../../assets/img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/base.css">
+<link rel="stylesheet" href="../../../assets/css/components.css">
+<link rel="stylesheet" href="../../../assets/css/sections.css">
+<script>
+  try {
+    document.documentElement.dataset.theme =
+      localStorage.getItem('kerb-theme') === 'light' ? 'light' : 'dark';
+  } catch (e) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#content">Skip to content</a>
+
+<div class="page-frame">
+
+  <nav class="nav-morph site-nav" aria-label="Primary" data-nav>
+    <div class="nav-lead">
+      <a class="nav-brand" href="/">Kerb</a>
+    </div>
+
+    <div class="nav-desktop">
+      <a class="nav-link panel-hover" href="/#how">How it works</a>
+      <a class="nav-link panel-hover" href="/#limits">Limits</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
+    </div>
+
+    <div class="nav-tail">
+      <span class="nav-desktop-block">
+        <button type="button" class="icon-btn panel-hover" data-theme-toggle aria-label="Light theme" title="Light theme">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+            <polygon points="17 10 17 14 16 14 16 15 15 15 15 16 14 16 14 17 10 17 10 16 9 16 9 15 8 15 8 14 7 14 7 10 8 10 8 9 9 9 9 8 10 8 10 7 14 7 14 8 15 8 15 9 16 9 16 10 17 10"></polygon>
+            <path d="m21,11v-1h1v-1h1v-2h-3v-1h-2v-2h-1V1h-2v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-2v3h-1v2h-2v1H1v2h1v1h1v1h1v2h-1v1h-1v1h-1v2h3v1h2v2h1v3h2v-1h1v-1h1v-1h2v1h1v1h1v1h2v-3h1v-2h2v-1h3v-2h-1v-1h-1v-1h-1v-2h1Zm-3,4h-1v1h-1v1h-1v1h-6v-1h-1v-1h-1v-1h-1v-6h1v-1h1v-1h1v-1h6v1h1v1h1v1h1v6Z"></path>
+          </svg>
+        </button>
+      </span>
+      <a class="btn-solid btn--nav" href="/app" data-app-link>Open App</a>
+    </div>
+  </nav>
+
+  <div id="content">
+    <main class="site-main">
+      <div class="frame docs-shell">
+
+        <div class="docs-nav">
+          <details class="docs-nav-toggle">
+            <summary>Documentation</summary>
+            <div class="docs-nav-inner">
+<div class="docs-nav-group">
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs">Kerb</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Concepts</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/concepts/address-poisoning">Address poisoning</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/the-asymmetry">The asymmetry</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/dwell-window">The dwell window</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/trust-list">The trust list</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/threat-model">Threat model</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Protocol</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/protocol/overview">Overview</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/lifecycle">Transfer lifecycle</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/state">State</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/parameters">Parameters</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/events-and-errors">Events and errors</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Implementation</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens" aria-current="page">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Integration</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/integration/frontend">Frontend</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Reference</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/reference/glossary">Glossary</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/faq">FAQ</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/limits">Honest limits</a></li>
+</ul></div>
+            </div>
+          </details>
+        </div>
+
+        <div class="docs-body">
+          <article class="docs-article">
+            <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Implementation</span><span class="sep">/</span><span>KerbLens</span></div>
+            <div class="docs-prose">
+<h1 id="kerblens">KerbLens</h1>
+<p>A stateless read helper. It custodies nothing, writes nothing, and can be
+replaced without touching <code>KerbCore</code>.</p>
+<p>Its job is to turn the raw mappings on <code>KerbCore</code> into the handful of questions
+an interface actually asks, in one call each, with paging so that a large list
+cannot make a read revert.</p>
+<h2 id="interface">Interface<a class="headerlink" href="#interface" title="Permanent link">#</a></h2>
+<pre><code class="language-solidity">interface IKerbLens {
+    struct HoldView {
+        bytes32 holdId;
+        address sender;
+        address recipient;
+        address asset;
+        uint256 amount;
+        uint64  releaseAt;
+        uint64  remaining;   // seconds until releaseAt, 0 once releasable
+        bool    releasable;  // block.timestamp &gt;= releaseAt
+    }
+
+    struct Quote {
+        bool    willHold;
+        uint64  dwellSeconds;
+        uint64  releaseAt;   // 0 when willHold is false
+        bytes32 holdId;      // 0 when willHold is false
+        bool    blocked;     // a hold for this triple is already pending
+    }
+
+    function core() external view returns (address);
+
+    function quote(address sender, address recipient, address asset)
+        external view returns (Quote memory);
+
+    function trusted(address sender, uint256 offset, uint256 limit)
+        external view returns (address[] memory page, uint256 total);
+
+    function pending(address sender, uint256 offset, uint256 limit)
+        external view returns (HoldView[] memory page, uint256 total);
+
+    function hold(bytes32 holdId) external view returns (HoldView memory);
+
+    function summary(address sender) external view returns (
+        uint256 trustedTotal,
+        uint256 pendingTotal,
+        uint64  dwellSeconds
+    );
+}
+</code></pre>
+<h2 id="quote">quote<a class="headerlink" href="#quote" title="Permanent link">#</a></h2>
+<p>The one an interface calls on every keystroke in the recipient field.</p>
+<pre><code class="language-solidity">function quote(address sender, address recipient, address asset)
+    external view returns (Quote memory q)
+{
+    q.dwellSeconds = core.dwellOf(sender);
+
+    if (recipient == address(0) || recipient == sender) {
+        return q;   // willHold false, nothing to say
+    }
+
+    if (core.isTrusted(sender, recipient)) {
+        return q;   // willHold false, goes straight through
+    }
+
+    q.willHold  = true;
+    q.holdId    = core.holdIdOf(sender, recipient, asset);
+    q.releaseAt = uint64(block.timestamp) + q.dwellSeconds;
+
+    ( , , , , , uint8 status) = core.holdOf(q.holdId);
+    q.blocked = status == 1;   // STATUS_PENDING
+}
+</code></pre>
+<p><code>releaseAt</code> here is a projection from the current block, not a commitment. The
+real value is fixed when the transaction lands. An interface should present it
+as an estimate, and the Kerb app shows the duration rather than a wall clock
+time for exactly that reason.</p>
+<p><code>blocked</code> tells the interface to say "you already have a transfer waiting to
+this address" instead of letting the user sign something that will revert with
+<code>HoldPending</code>.</p>
+<h2 id="paging">Paging<a class="headerlink" href="#paging" title="Permanent link">#</a></h2>
+<p>Both list reads take <code>offset</code> and <code>limit</code> and return the page plus the true
+total, so a caller can size its next request without a second call.</p>
+<pre><code class="language-solidity">function trusted(address sender, uint256 offset, uint256 limit)
+    external view returns (address[] memory page, uint256 total)
+{
+    total = core.trustedCount(sender);
+    if (offset &gt;= total) return (new address[](0), total);
+
+    uint256 n = total - offset;
+    if (n &gt; limit) n = limit;
+
+    page = new address[](n);
+    for (uint256 i = 0; i &lt; n; ++i) {
+        page[i] = core.trustedAt(sender, offset + i);
+    }
+}
+</code></pre>
+<p><code>pending</code> follows the same shape, resolving each id through <code>holdOf</code> and
+computing <code>remaining</code> and <code>releasable</code> against <code>block.timestamp</code>.</p>
+<p>Paging matters because <code>EnumerableSet</code> enumeration is O(n) in the page size and
+an unbounded return would eventually exceed the gas limit of an <code>eth_call</code> on a
+long list. Nothing enforces a maximum <code>limit</code>, because a view call that runs out
+of gas costs the caller nothing and fails loudly.</p>
+<h2 id="ordering-caveat">Ordering caveat<a class="headerlink" href="#ordering-caveat" title="Permanent link">#</a></h2>
+<p><code>EnumerableSet</code> does not preserve insertion order. Removing an element moves the
+last element into the vacated slot. So:</p>
+<ul>
+<li>The order of <code>trusted</code> and <code>pending</code> pages is arbitrary and changes on removal.</li>
+<li>Paging across a mutation can miss or repeat an entry.</li>
+</ul>
+<p>For a contact list of realistic size the correct answer is to read the whole set
+in one or two pages and sort client side. An interface that needs stable
+chronological order should build it from the <code>Trusted</code> and <code>Forgotten</code> logs
+instead, which do carry order. See
+<a href="/docs/protocol/events-and-errors">Events and errors</a>.</p>
+<h2 id="what-kerblens-deliberately-does-not-do">What KerbLens deliberately does not do<a class="headerlink" href="#what-kerblens-deliberately-does-not-do" title="Permanent link">#</a></h2>
+<p><strong>It does not write.</strong> No function is non view. It cannot be made to move value
+and holds no allowances.</p>
+<p><strong>It does not hold an upgrade pointer.</strong> <code>core</code> is <code>immutable</code>, set once in the
+constructor. A new lens is a new deployment with a new address, published in the
+web configuration.</p>
+<p><strong>It does not aggregate across senders.</strong> Every read is scoped to one sender.
+There is no "all pending holds" or "all trusted pairs" view, because serving one
+would mean maintaining a global index in <code>KerbCore</code> that nothing else needs.</p>
+<p><strong>It does not price anything.</strong> No oracle, no value in a reference currency, no
+minimum amount logic. See <a href="/docs/protocol/parameters">Parameters</a>.</p>
+<p>Next: <a href="/docs/implementation/assets">Assets</a>.</p>
+            </div>
+<nav class="docs-pager" aria-label="Page">
+<a class="panel panel-hover docs-pager-link" href="/docs/implementation/core"><span class="label">Previous</span><span class="docs-pager-title">KerbCore</span></a>
+<a class="panel panel-hover docs-pager-link docs-pager-link--next" href="/docs/implementation/assets"><span class="label">Next</span><span class="docs-pager-title">Assets</span></a>
+</nav>
+          </article>
+        </div>
+
+<aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
+<ul>
+<li><a href="#interface">Interface</a></li>
+<li><a href="#quote">quote</a></li>
+<li><a href="#paging">Paging</a></li>
+<li><a href="#ordering-caveat">Ordering caveat</a></li>
+<li><a href="#what-kerblens-deliberately-does-not-do">What KerbLens deliberately does not do</a></li>
+</ul>
+</div>
+</aside>
+
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<div class="toast-region" aria-live="polite"></div>
+
+<script type="module" src="../../../assets/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The asymmetry | Kerb docs</title>
+<meta name="description" content="This is the whole idea. Everything else in Kerb is mechanism.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The asymmetry | Kerb docs">
+<meta property="og:description" content="This is the whole idea. Everything else in Kerb is mechanism.">
+<meta property="og:site_name" content="Kerb">
+<meta property="og:url" content="" data-site-url="/docs/concepts/the-asymmetry">
+<link rel="canonical" href="" data-site-url="/docs/concepts/the-asymmetry">
+<link rel="icon" href="../../../assets/img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/base.css">
+<link rel="stylesheet" href="../../../assets/css/components.css">
+<link rel="stylesheet" href="../../../assets/css/sections.css">
+<script>
+  try {
+    document.documentElement.dataset.theme =
+      localStorage.getItem('kerb-theme') === 'light' ? 'light' : 'dark';
+  } catch (e) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#content">Skip to content</a>
+
+<div class="page-frame">
+
+  <nav class="nav-morph site-nav" aria-label="Primary" data-nav>
+    <div class="nav-lead">
+      <a class="nav-brand" href="/">Kerb</a>
+    </div>
+
+    <div class="nav-desktop">
+      <a class="nav-link panel-hover" href="/#how">How it works</a>
+      <a class="nav-link panel-hover" href="/#limits">Limits</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
+    </div>
+
+    <div class="nav-tail">
+      <span class="nav-desktop-block">
+        <button type="button" class="icon-btn panel-hover" data-theme-toggle aria-label="Light theme" title="Light theme">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+            <polygon points="17 10 17 14 16 14 16 15 15 15 15 16 14 16 14 17 10 17 10 16 9 16 9 15 8 15 8 14 7 14 7 10 8 10 8 9 9 9 9 8 10 8 10 7 14 7 14 8 15 8 15 9 16 9 16 10 17 10"></polygon>
+            <path d="m21,11v-1h1v-1h1v-2h-3v-1h-2v-2h-1V1h-2v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-2v3h-1v2h-2v1H1v2h1v1h1v1h1v2h-1v1h-1v1h-1v2h3v1h2v2h1v3h2v-1h1v-1h1v-1h2v1h1v1h1v1h2v-3h1v-2h2v-1h3v-2h-1v-1h-1v-1h-1v-2h1Zm-3,4h-1v1h-1v1h-1v1h-6v-1h-1v-1h-1v-1h-1v-6h1v-1h1v-1h1v-1h6v1h1v1h1v1h1v6Z"></path>
+          </svg>
+        </button>
+      </span>
+      <a class="btn-solid btn--nav" href="/app" data-app-link>Open App</a>
+    </div>
+  </nav>
+
+  <div id="content">
+    <main class="site-main">
+      <div class="frame docs-shell">
+
+        <div class="docs-nav">
+          <details class="docs-nav-toggle">
+            <summary>Documentation</summary>
+            <div class="docs-nav-inner">
+<div class="docs-nav-group">
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs">Kerb</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Concepts</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/concepts/address-poisoning">Address poisoning</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/the-asymmetry" aria-current="page">The asymmetry</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/dwell-window">The dwell window</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/trust-list">The trust list</a></li>
+<li><a class="docs-rail-link" href="/docs/concepts/threat-model">Threat model</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Protocol</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/protocol/overview">Overview</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/lifecycle">Transfer lifecycle</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/state">State</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/parameters">Parameters</a></li>
+<li><a class="docs-rail-link" href="/docs/protocol/events-and-errors">Events and errors</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Implementation</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Integration</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/integration/frontend">Frontend</a></li>
+</ul></div>
+<div class="docs-nav-group">
+<span class="label">Reference</span>
+<ul class="docs-nav-list">
+<li><a class="docs-rail-link" href="/docs/reference/glossary">Glossary</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/faq">FAQ</a></li>
+<li><a class="docs-rail-link" href="/docs/reference/limits">Honest limits</a></li>
+</ul></div>
+            </div>
+          </details>
+        </div>
+
+        <div class="docs-body">
+          <article class="docs-article">
+            <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Concepts</span><span class="sep">/</span><span>The asymmetry</span></div>
+            <div class="docs-prose">
+<h1 id="the-asymmetry">The asymmetry</h1>
+<p>This is the whole idea. Everything else in Kerb is mechanism.</p>
+<h2 id="two-lists">Two lists<a class="headerlink" href="#two-lists" title="Permanent link">#</a></h2>
+<p>Consider the two places an address can appear in your wallet.</p>
+<h3 id="your-transaction-history">Your transaction history<a class="headerlink" href="#your-transaction-history" title="Permanent link">#</a></h3>
+<p>Your history is a projection of chain state. It is assembled from every transfer
+that names your address, in either direction. That means its contents are
+determined by <strong>everyone</strong>, not by you. Anyone holding gas can add a row to it,
+permanently, for a fraction of a cent, without your consent and without any
+signature from you.</p>
+<p>The history is not wrong to work this way. It is a faithful record of what the
+chain contains. The problem is that it is presented as if it were yours, and it
+is not. It is a public writeable surface rendered inside a private looking
+interface.</p>
+<pre><code>Transaction history          write access: anyone with gas
+</code></pre>
+<h3 id="a-list-built-from-your-completed-sends">A list built from your completed sends<a class="headerlink" href="#a-list-built-from-your-completed-sends" title="Permanent link">#</a></h3>
+<p>Now consider a list with exactly one rule for appending to it: an address is
+added when <strong>a transfer you signed, and did not cancel, reached that address</strong>.</p>
+<p>There is no other path in. Nobody can pay to be added. Nobody can be added by
+sending you something. There is no admin who can insert an entry, because there
+is no admin. The only key that can cause an append is yours, and the only action
+that causes one is an action you took deliberately and had the chance to undo.</p>
+<pre><code>Your Kerb list               write access: your key, via a settled transfer
+</code></pre>
+<h2 id="the-claim">The claim<a class="headerlink" href="#the-claim" title="Permanent link">#</a></h2>
+<blockquote>
+<p>An attacker can write fake addresses into your history. An attacker cannot
+write into a list built only from your own completed sends.</p>
+</blockquote>
+<p>That is not a defence that depends on detection. There is no heuristic, no
+scoring, no oracle, nothing to tune and nothing to get wrong. It is a property
+of who holds write access to which surface.</p>
+<h2 id="what-this-buys-and-what-it-costs">What this buys and what it costs<a class="headerlink" href="#what-this-buys-and-what-it-costs" title="Permanent link">#</a></h2>
+<p>It buys one thing: <strong>a transfer to an address you have never sent to before is
+distinguishable, by the protocol, from a transfer to an address you have.</strong> The
+protocol does not need to know which is safe. It only needs to know which is
+new, and it can know that from a list nobody else can write to.</p>
+<p>Given that, the first transfer to a new address can be treated differently from
+every transfer after it. Kerb treats it by holding it briefly. See
+<a href="/docs/concepts/dwell-window">The dwell window</a>.</p>
+<p>It costs one thing: <strong>the first transfer to any genuinely new address is slower.</strong>
+Every subsequent transfer to that address is not. If most of your transfers go
+to addresses you have used before, and for most people they do, the cost is paid
+once per relationship and never again.</p>
+<h2 id="why-the-list-is-append-only-by-sends">Why the list is append only by sends<a class="headerlink" href="#why-the-list-is-append-only-by-sends" title="Permanent link">#</a></h2>
+<p>An obvious convenience would be a function that lets you add an address to your
+list directly, without waiting. Kerb deliberately does not have one.</p>
+<p>The moment such a function exists, the claim weakens from</p>
+<blockquote>
+<p>written only by your completed sends</p>
+</blockquote>
+<p>to</p>
+<blockquote>
+<p>written by your completed sends, or by anything that can get you to sign one
+more transaction</p>
+</blockquote>
+<p>An attacker who can persuade you to paste an address into a send field can just
+as easily persuade you to paste it into a trust field, and the trust field has
+no waiting period attached. The omission is the point. See
+<a href="/docs/concepts/trust-list">The trust list</a> for what is and is not possible.</p>
+<p>Next: <a href="/docs/concepts/dwell-window">The dwell window</a>.</p>
+            </div>
+<nav class="docs-pager" aria-label="Page">
+<a class="panel panel-hover docs-pager-link" href="/docs/concepts/address-poisoning"><span class="label">Previous</span><span class="docs-pager-title">Address poisoning</span></a>
+<a class="panel panel-hover docs-pager-link docs-pager-link--next" href="/docs/concepts/dwell-window"><span class="label">Next</span><span class="docs-pager-title">The dwell window</span></a>
+</nav>
+          </article>
+        </div>
+
+<aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
+<ul>
+<li><a href="#two-lists">Two lists</a><ul>
+<li><a href="#your-transaction-history">Your transaction history</a></li>
+<li><a href="#a-list-built-from-your-completed-sends">A list built from your completed sends</a></li>
+</ul>
+</li>
+<li><a href="#the-claim">The claim</a></li>
+<li><a href="#what-this-buys-and-what-it-costs">What this buys and what it costs</a></li>
+<li><a href="#why-the-list-is-append-only-by-sends">Why the list is append only by sends</a></li>
+</ul>
+</div>
+</aside>
+
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<div class="toast-region" aria-live="polite"></div>
+
+<script type="module" src="../../../assets/js/main.js"></script>
+</body>
+</html>
