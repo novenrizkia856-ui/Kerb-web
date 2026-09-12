@@ -21,7 +21,13 @@
    Nothing here signs anything. Connecting, reading the account, and switching
    chain are the whole surface. */
 
-const WC_CDN = 'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.17.0/dist/index.es.js';
+/* The `+esm` suffix matters and is not interchangeable with the package's own
+   `dist/index.es.js`. That file begins `import { EventEmitter } from "events"`,
+   a bare specifier Node resolves and a browser cannot, so importing it fails
+   with a module resolution TypeError before any WalletConnect code runs. The
+   `+esm` build is bundled by jsDelivr: no bare specifiers, and its remaining
+   imports are absolute paths on the same CDN origin. */
+const WC_CDN = 'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.17.0/+esm';
 
 /* --- chain ------------------------------------------------------------------
    Built from config so there is one source of truth for the chain id, and a
@@ -222,10 +228,13 @@ export async function connectWalletConnect(config) {
     return { ok: true };
   } catch (error) {
     if (error?.code === 4001) return { ok: false, reason: 'Connection rejected.' };
-    /* The CDN import is the fragile part of this path. Say so plainly rather
-       than reporting it as a wallet problem. */
+    /* The CDN import is the fragile part of this path, so a failure here is
+       reported as what it is rather than as a wallet problem. The message the
+       browser gives for an unresolvable module is unhelpful on its own, so the
+       real one goes to the console for whoever is debugging it. */
     if (error instanceof TypeError) {
-      return { ok: false, reason: 'WalletConnect could not be loaded.' };
+      console.warn('[kerb.wallet] WalletConnect module failed to load:', error);
+      return { ok: false, reason: 'WalletConnect could not be loaded. Check the console.' };
     }
     return { ok: false, reason: error?.message || 'Could not connect.' };
   }
@@ -309,6 +318,13 @@ export async function restore(config) {
 
 export function getState() {
   return snapshot();
+}
+
+/** The raw EIP-1193 provider, for `kerb.js` to send its own requests through.
+    Null when nothing is connected, so every caller has to decide what to do
+    about that rather than getting a stub that silently fails. */
+export function getProvider() {
+  return state.provider;
 }
 
 export function isOnKerbChain(config) {

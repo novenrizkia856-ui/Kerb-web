@@ -14,6 +14,7 @@ import {
 import { initKerbVisuals } from './kerb-visuals.js';
 import { initApp } from './app.js';
 import { initWallet } from './wallet-ui.js';
+import { isOnKerbChain, onWalletChange } from './wallet.js';
 
 function initThemeToggle() {
   const button = document.querySelector('[data-theme-toggle]');
@@ -59,15 +60,29 @@ function boot() {
   initCounters(document);
   /* The app shell claims its own windows first, then the page wide pass picks
      up whatever is left. Mounting is idempotent either way. */
-  initApp(document.querySelector('[data-app]'));
+  const app = initApp(document.querySelector('[data-app]'));
   initKerbVisuals(document);
   initThemeToggle();
 
-  /* The wallet needs the chain and the project id, so it waits for the config
+  /* The wallet needs the chain and the addresses, so it waits for the config
      rather than reading a half built one. Everything above is already on
-     screen by then; this only decides what a button says. */
+     screen by then, running on demo data.
+
+     The app is told about every wallet change rather than asked: connecting,
+     switching account, switching chain and disconnecting all go through the
+     same path, so there is no state the two can disagree about. */
   applyConfig(document).then((config) => {
     initWallet(config);
+    if (app) {
+      onWalletChange((state) => {
+        app.setWallet({
+          connected: state.connected,
+          account: state.account,
+          onKerbChain: isOnKerbChain(config),
+          config,
+        });
+      });
+    }
   });
 }
 

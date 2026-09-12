@@ -84,6 +84,14 @@
                 <select class="input-well" id="f-token" data-field="token"></select>
               </div>
 
+              <div class="field" data-token-address-field hidden>
+                <label class="label" for="f-token-address">Token address</label>
+                <input class="input-well" id="f-token-address" data-field="tokenAddress" type="text"
+                       inputmode="text" autocomplete="off" spellcheck="false" placeholder="0x"
+                       aria-describedby="token-address-hint">
+                <span class="field-hint" id="token-address-hint" data-token-address-hint>Paste the ERC-20 contract address.</span>
+              </div>
+
               <div class="field">
                 <label class="label" for="f-to">To</label>
                 <input class="input-well" id="f-to" data-field="to" type="text" inputmode="text"
@@ -98,6 +106,7 @@
               </div>
 
               <button type="button" class="btn-solid btn--block" data-action="review">Review</button>
+              <p class="send-caption" data-app-status role="status" hidden></p>
             </div>
 
             <!-- State 2. Review -->
@@ -155,7 +164,7 @@
                 </div>
               </div>
 
-              <div class="kwin" data-kerb-window data-dwell="20" data-autostart="false">
+              <div class="kwin" data-kerb-window data-dwell="20" data-autostart="false" data-demo-window>
                 <div class="kwin-row">
                   <span class="label" data-kwin-label>Holding</span>
                   <span class="kwin-time" data-kwin-time>00:20</span>
@@ -163,6 +172,22 @@
                 <div class="kwin-track" aria-hidden="true">
                   <span class="kwin-fill" data-kwin-fill></span>
                   <span class="kwin-stream stream-line" data-kwin-stream></span>
+                </div>
+              </div>
+
+              <!-- Live mode replaces the demo countdown with the real one. The
+                   demo widget animates a fixed twenty seconds, which would be a
+                   lie about a window measured in minutes or days. -->
+              <div class="ledger" data-live-window hidden>
+                <div class="ledger-row">
+                  <span class="k">Opens at</span>
+                  <span class="lead" aria-hidden="true"></span>
+                  <span class="v" data-holding="releaseText"></span>
+                </div>
+                <div class="ledger-row">
+                  <span class="k">Time left</span>
+                  <span class="lead" aria-hidden="true"></span>
+                  <span class="v" data-holding="countdown" data-release-at="0"></span>
                 </div>
               </div>
               <p class="send-caption">Cancel anytime before this closes.</p>
@@ -202,6 +227,14 @@
         </section>
 
         <div class="wallet-banner" data-wallet-banner hidden></div>
+
+        <section class="contacts" data-pendings-section hidden aria-labelledby="pendings-title">
+          <div class="section-label">
+            <span class="label" id="pendings-title">[ Waiting ]</span>
+          </div>
+          <ul class="cells contacts-list" data-pendings></ul>
+          <p class="contacts-empty" data-pendings-empty hidden>Nothing waiting.</p>
+        </section>
 
         <section class="contacts" aria-labelledby="contacts-title">
           <div class="section-label">

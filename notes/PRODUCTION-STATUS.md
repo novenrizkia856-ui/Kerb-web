@@ -17,15 +17,13 @@ instead of whichever one won the race for `window.ethereum`; a pre-6963 wallet
 falls back to the global. WalletConnect is loaded from a CDN at click time, and
 only when a project id is set, so a visitor using an extension never downloads
 it. Connect, disconnect, account display, chain switch and add, silent
-reconnect on return. Nothing signs anything.
+reconnect on return.
 
-## Set the WalletConnect project id
+**The app.** It transacts against the deployed contracts. See below.
 
-In `config/kerb.config.json`:
+## The WalletConnect project id
 
-```json
-"wallet": { "walletConnectProjectId": "", "enabled": true }
-```
+Set in `config/kerb.config.json` under `wallet.walletConnectProjectId`.
 
 **Not in a Vercel environment variable, and this is not a shortcut.** This site
 has no `package.json` and no build step. Vercel environment variables exist at
@@ -40,21 +38,62 @@ file is the correct home for a public value.
 Leaving it empty is a supported state: the picker simply offers the installed
 extensions and no WalletConnect row.
 
-## Not ready
+## Now live, not demo
 
-### The app does not transact
+`app/index.html` transacts. Connect a wallet on chain 4663 and the same four
+screens drive the deployed contracts; disconnect and the demo source takes back
+over. Both sources implement one interface in `app-source.js`, so the live path
+is not a second, less tested app bolted to the side of the first.
 
-`app/index.html` is still a demo shell. The wallet connects for real, and
-nothing else does: sending, cancelling and settling run against
-`app-mock.js` and sign nothing. `flags.appMode` stays `"mock"` because that is
-true, and because nothing in the codebase reads the flag anyway — flipping it
-would change a word and not a behaviour.
+What it does:
 
-What wiring it up needs: encode and send `send`, `cancel`, `settle`, `trust`,
-`untrust` through the connected provider; read contacts and pendings through
-`KerbLens` (`contactsPage`, `pendingsOf`, `summary`); watch `Held`, `Settled`,
-`Cancelled` and `Trusted` logs to keep the list current. The ABIs are in
-`config/abi/` and `wallet.js` already exposes an `eth_call` helper.
+- **Send.** Native and ERC-20. For a token it checks the balance, checks the
+  allowance, and sends an approval first only when one is needed, telling you
+  which of the two signatures you are looking at. Approval is for the exact
+  amount, not unlimited — Kerb's own claim that an unlimited approval to
+  KerbCore is safe is a claim about KerbCore, and an app that habituates people
+  to signing unlimited approvals is teaching the habit that drains them
+  somewhere else.
+- **Waiting.** Open holds are found from `Held` logs filtered on the sender,
+  then resolved in one `pendingsOf` call. Each row carries a live countdown and
+  a Cancel that becomes Settle when the window closes.
+- **Cancel and settle.** Real transactions, waited on, and a reverted receipt is
+  reported as a failure rather than shown as success.
+- **Your list.** Read from `KerbLens.contactsPage`, refreshed after anything
+  that could change it.
+
+### Verified end to end, not just wired
+
+Run against a local Anvil node with the real contracts deployed and a provider
+shim standing in for a wallet:
+
+| | |
+|---|---|
+| Connect, read contacts | the `trust`ed contact and its on-chain label |
+| Trusted vs new address | read from `isTrusted`, not from mock data |
+| Send 0.01 and 0.05 ETH | `nextId` advanced, holds appeared with real windows |
+| Cancel | 0.05 ETH refunded, hold gone |
+| Settle after the window | recipient received exactly 1 ETH |
+| The property itself | the settled recipient joined the contact list |
+
+### Two bugs that testing found
+
+**The countdown asked the wrong clock.** `cancel` and `settle` are decided by
+`block.timestamp`, and the first version computed the time remaining from
+`Date.now()`. A user whose device clock is a few minutes fast would have been
+offered Settle on a hold the contract still considered open, and the
+transaction would have reverted in their face with nothing the app could say
+about why. Every window decision now goes through a chain clock, resynced
+whenever the lists reload. The Anvil run made this visible by putting the chain
+1,142 seconds ahead of the browser.
+
+**The demo countdown would have lied in live mode.** `mountWindow` reads
+`data-dwell` once when it mounts and closes over it, so the twenty second demo
+animation could not be retargeted at a real window of fifteen minutes to seven
+days. Rather than animate a wrong number convincingly, live mode hides that
+widget and shows the actual release time and time remaining.
+
+## Still not ready
 
 ### The documentation describes a contract that was never deployed
 
@@ -80,8 +119,17 @@ doors into the list, and it grants a permanent bypass for that address from a
 single signature. That is a real sharp edge and the docs should describe it
 rather than deny it.
 
-## Fixed while looking
+## Also fixed while looking
 
+**WalletConnect could not load.** The CDN URL pointed at the package's own
+`dist/index.es.js`, which begins `import { EventEmitter } from "events"` — a
+bare specifier Node resolves and a browser cannot, so the import failed with a
+module resolution error before any WalletConnect code ran. The `+esm` build on
+the same CDN is bundled: no bare specifiers, and its remaining imports are
+absolute paths on the same origin. Confirmed loading in the browser, exporting
+`EthereumProvider.init`.
+
+**A stale cache header would have frozen every JS fix for a year.**
 `vercel.json` marked everything under `/assets/` as
 `max-age=31536000, immutable`, but no build step hashes the filenames. A
 returning visitor would have kept a stale `main.js` and `tokens.css` for a year
