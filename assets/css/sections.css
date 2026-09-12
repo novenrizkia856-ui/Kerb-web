@@ -1418,3 +1418,179 @@
   justify-content: center;
   gap: 16px;
 }
+
+/* --- landing figures ---------------------------------------------------------
+   Three concrete figures, sharing one shell. Each draws the subject of the
+   sentence beside it rather than standing in for it, so the type sizes and
+   colours follow .asym-row rather than inventing a second vocabulary. */
+
+.fig {
+  margin: 32px 0 0;
+  padding: 0;
+}
+
+.fig-cap {
+  margin: 0;
+  padding-top: 16px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--faint);
+}
+
+.fig-key {
+  color: var(--state-trust);
+}
+
+/* Colour is not the only cue. `--state-trust` resolves to the page's plain
+   text colour, so the marked cells read as "brighter" rather than as any
+   particular hue, and the caption says "picked out" rather than naming one. */
+
+/* 1. Fifty three squares, one per wallet tested. Countable on purpose: the
+      claim beside it is a ratio, and a reader who doubts it can check. */
+.fig-grid {
+  display: grid;
+  /* A fixed column count so the block reads as a deliberate matrix rather than
+     as however many happened to fit. 53 does not divide evenly, and the short
+     last row is the point: it is an odd number of wallets, not a tidy one. */
+  grid-template-columns: repeat(18, 1fr);
+  gap: 5px;
+  max-width: 430px;
+  margin-inline: auto;
+}
+
+@media (max-width: 520px) {
+  .fig-grid { grid-template-columns: repeat(12, 1fr); }
+}
+
+/* Filled with --muted rather than --surface. On the light theme --surface is
+   pure white against a #faf7f5 page, which measures 1.07 to 1: the fifty
+   unmarked squares all but disappear, and a figure whose whole point is that
+   you can count fifty three of them stops working. --muted carries in both
+   themes, and reading slightly drab is correct here anyway, since these are
+   the wallets that do not warn you. */
+.fig-cell {
+  aspect-ratio: 1;
+  background: var(--muted);
+}
+
+.fig-cell[data-kind="trust"] {
+  border-color: var(--state-trust);
+  background: var(--state-trust);
+}
+
+/* A second, non colour cue for the marked cells, so the figure still reads
+   with colour vision differences or on a bad screen. */
+.fig-cell[data-kind="trust"]::after {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: 1px solid var(--bg);
+  outline-offset: -3px;
+}
+
+/* 2. The two routes a send takes, as the rows the app itself renders. */
+.fig--paths {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--hairline);
+  border-block: 1px solid var(--hairline);
+}
+
+.path-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px;
+  background: var(--surface);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.path-addr {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+}
+
+.path-row .tag {
+  flex-shrink: 0;
+  font-size: 8px;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.path-arrow {
+  color: var(--faint);
+}
+
+.path-out {
+  flex: 1 1 200px;
+}
+
+.path-row[data-kind="trust"] .path-addr,
+.path-row[data-kind="trust"] .tag { color: var(--state-trust); }
+.path-row[data-kind="wait"]  .path-addr,
+.path-row[data-kind="wait"]  .tag { color: var(--state-wait); }
+
+/* The caption sits outside the hairline block, so it is not mistaken for a
+   third row. */
+.fig--paths .fig-cap {
+  padding: 16px 12px 0;
+  background: var(--bg);
+}
+
+/* 3. The deployed ABI beside the functions that are not in it. */
+.abi-cols {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 680px) {
+  .abi-cols { grid-template-columns: 1fr 1fr; }
+}
+
+.abi-head {
+  margin: 0 0 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--faint);
+}
+
+.abi-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--hairline);
+  border-block: 1px solid var(--hairline);
+}
+
+.abi-row {
+  padding: 8px 10px;
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  line-height: 1.4;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.abi-row[data-kind="trust"] { color: var(--state-trust); }
+
+/* Struck through rather than greyed out. A dimmed row reads as "less
+   important"; a struck one reads as "not there", which is the claim. */
+.abi-row[data-kind="absent"] {
+  color: var(--faint);
+  text-decoration: line-through;
+  text-decoration-color: var(--state-danger);
+  text-decoration-thickness: 1px;
+}

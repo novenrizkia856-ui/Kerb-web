@@ -12,6 +12,7 @@ import {
   initTypers,
 } from './motion.js';
 import { initKerbVisuals } from './kerb-visuals.js';
+import { initFigures } from './kerb-figures.js';
 import { initApp } from './app.js';
 import { initWallet } from './wallet-ui.js';
 import { isOnKerbChain, onWalletChange } from './wallet.js';
@@ -62,6 +63,7 @@ function boot() {
      up whatever is left. Mounting is idempotent either way. */
   const app = initApp(document.querySelector('[data-app]'));
   initKerbVisuals(document);
+  initFigures(document);
   initThemeToggle();
 
   /* The wallet needs the chain and the addresses, so it waits for the config

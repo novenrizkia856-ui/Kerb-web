@@ -214,6 +214,15 @@
               <div class="stat-cap">wallets warn you</div>
             </div>
           </div>
+          <figure class="fig fig--wallets" data-fig="wallets" data-reveal-group>
+            <div class="fig-grid" data-fig-grid data-reveal></div>
+            <figcaption class="fig-cap" data-reveal>
+              Every square is one wallet the study tested. The
+              <span class="fig-key">three picked out</span> are the ones that
+              warn you before you sign.
+            </figcaption>
+          </figure>
+
           <p class="numbers-note">USENIX Security 2025. Wallet security study 2025.</p>
         </section>
 
@@ -261,6 +270,25 @@
             </li>
           </ol>
 
+          <figure class="fig fig--paths" data-fig="paths" data-reveal-group>
+            <div class="path-row" data-kind="trust" data-reveal>
+              <code class="path-addr">0x71C7&hellip;976F</code>
+              <span class="tag">on your list</span>
+              <span class="path-arrow" aria-hidden="true">&rarr;</span>
+              <span class="path-out">Arrives now. Kerb never holds it.</span>
+            </div>
+            <div class="path-row" data-kind="wait" data-reveal>
+              <code class="path-addr">0x4E83&hellip;311C</code>
+              <span class="tag">not on your list</span>
+              <span class="path-arrow" aria-hidden="true">&rarr;</span>
+              <span class="path-out">Waits 15 minutes. Yours to cancel.</span>
+            </div>
+            <figcaption class="fig-cap" data-reveal>
+              The same send, two routes. Which one you get is decided by your
+              own list, and nothing else.
+            </figcaption>
+          </figure>
+
           <p class="how-closing">Next time it goes straight through.</p>
         </section>
 
@@ -299,6 +327,25 @@
               <p class="prop-body">The protocol works without one.</p>
             </div>
           </div>
+
+          <figure class="fig fig--abi" data-fig="abi" data-reveal-group>
+            <div class="abi-cols">
+              <div class="abi-col" data-reveal>
+                <p class="abi-head">What you can call</p>
+                <ul class="abi-list" data-abi-present></ul>
+              </div>
+              <div class="abi-col" data-reveal>
+                <p class="abi-head">What nobody can call</p>
+                <ul class="abi-list" data-abi-absent></ul>
+              </div>
+            </div>
+            <figcaption class="fig-cap" data-reveal>
+              Read from the deployed contract's own ABI, all
+              <span data-abi-count>&mdash;</span> functions of it. The right
+              hand column is not a promise. Those functions are not in the
+              contract, so there is nothing to call.
+            </figcaption>
+          </figure>
         </section>
 
         <!-- 6. Honest limits ------------------------------------------------->
