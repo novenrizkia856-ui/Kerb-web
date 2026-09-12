@@ -144,17 +144,41 @@
                 <span class="c c-br" aria-hidden="true"></span>See how</a>
             </div>
 
-            <!-- Kerb visual A, compact. Brief 8.3. -->
-            <div class="kwin kwin--compact" data-kerb-window data-dwell="12">
-              <div class="kwin-row">
-                <span class="label" data-kwin-label>Holding</span>
-                <span class="kwin-time" data-kwin-time>00:12</span>
+            <!-- The attack, drawn rather than described. Two addresses that a
+                 wallet renders identically, then the same two in full. The
+                 compact waiting window that used to sit here showed the answer
+                 to a question the hero had not asked yet; it still appears at
+                 full size in step 02, so nothing is lost by leading with the
+                 problem instead. -->
+            <figure class="fig hero-fig" data-fig="lookalike">
+              <div class="lk-block">
+                <p class="lk-head">What your wallet shows you</p>
+                <div class="lk-shorts">
+                  <code class="lk-short">0x71C7&hellip;976F</code>
+                  <code class="lk-short">0x71C7&hellip;976F</code>
+                </div>
+                <p class="lk-verdict">Identical.</p>
               </div>
-              <div class="kwin-track" aria-hidden="true">
-                <span class="kwin-fill" data-kwin-fill></span>
-                <span class="kwin-stream stream-line" data-kwin-stream></span>
+
+              <div class="lk-block">
+                <p class="lk-head">The same two, in full</p>
+                <ul class="lk-fulls">
+                  <li class="lk-row" data-kind="trust">
+                    <code class="lk-addr"><span class="lk-fix">0x71C7</span><span class="lk-mid">656EC7ab88b098defB751B7401B5f6d8</span><span class="lk-fix">976F</span></code>
+                    <span class="tag">yours</span>
+                  </li>
+                  <li class="lk-row" data-kind="fake">
+                    <code class="lk-addr"><span class="lk-fix">0x71C7</span><span class="lk-mid">a91f3d02bc7714e0a4c8817ef0c29b41</span><span class="lk-fix">976F</span></code>
+                    <span class="tag">the lookalike</span>
+                  </li>
+                </ul>
               </div>
-            </div>
+
+              <figcaption class="fig-cap">
+                Same first four characters, same last four. Only the middle
+                differs, and the middle is the part nothing shows you.
+              </figcaption>
+            </figure>
           </div>
         </section>
 

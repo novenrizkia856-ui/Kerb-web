@@ -1594,3 +1594,112 @@
   text-decoration-color: var(--state-danger);
   text-decoration-thickness: 1px;
 }
+
+/* --- hero figure: the lookalike ----------------------------------------------
+   The attack drawn rather than described. Brightness carries the meaning: the
+   characters a wallet actually renders are at full text colour, the thirty two
+   it hides are dimmed. Both rows are dimmed in the same place, so what stands
+   out is that the bright parts match and the dim parts do not. */
+
+.hero-fig {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 480px;
+  margin: 4px 0 0;
+  text-align: left;
+}
+
+.lk-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lk-head {
+  margin: 0;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--faint);
+}
+
+.lk-shorts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lk-short {
+  flex: 1 1 auto;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-align: center;
+  color: var(--text);
+}
+
+.lk-verdict {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--state-danger);
+}
+
+.lk-fulls {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The row is a grid item pair rather than a flex line so both addresses start
+   at the same x. Two monospace strings that do not line up cannot be compared,
+   which is the only thing this figure is for. */
+.lk-row {
+  display: contents;
+}
+
+.lk-addr {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .02em;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* What the wallet renders. */
+.lk-fix { color: var(--text); }
+
+/* What it does not. */
+.lk-mid { color: var(--muted); }
+
+.lk-row[data-kind="fake"] .lk-mid { color: var(--state-danger); }
+
+.lk-row .tag {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  white-space: nowrap;
+  color: var(--faint);
+}
+
+.lk-row[data-kind="fake"] .tag { color: var(--state-danger); }
+
+.hero-fig .fig-cap {
+  padding-top: 0;
+}
+
+@media (max-width: 520px) {
+  .lk-addr { font-size: 10px; }
+  .lk-fulls { grid-template-columns: 1fr; gap: 2px 0; }
+  .lk-row .tag { padding-bottom: 6px; }
+}
