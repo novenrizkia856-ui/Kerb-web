@@ -278,8 +278,8 @@ SHELL = """<!doctype html>
   <nav class="nav-morph site-nav" aria-label="Primary" data-nav>
     <div class="nav-lead">
       <a class="nav-brand" href="/" aria-label="Kerb, home">
-        <img class="brand-lockup brand-lockup--dark" src="{p}assets/img/logo-lockup-dark.png" alt="" width="560" height="200" decoding="async">
-        <img class="brand-lockup brand-lockup--light" src="{p}assets/img/logo-lockup-light.png" alt="" width="560" height="200" decoding="async">
+        <img class="brand-lockup brand-lockup--dark" src="{p}assets/img/logo-lockup-dark.png" alt="" width="560" height="242" decoding="async">
+        <img class="brand-lockup brand-lockup--light" src="{p}assets/img/logo-lockup-light.png" alt="" width="560" height="242" decoding="async">
       </a>
     </div>
 

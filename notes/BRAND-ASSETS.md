@@ -23,9 +23,9 @@ with baked backgrounds.
 
 **The one detail that decided most of the placement:** the mark's eyes and
 mouth are knocked out of the artwork, not filled white. They take the colour of
-whatever is behind them, so a single mark file reads correctly on the dark
-theme and the light one. That is why there is no light and dark variant of the
-mark anywhere below, only of the wordmark.
+whatever is behind them, so the mark needs no recolouring per theme; what it
+does need is something dark behind it on the light theme, which is covered
+below.
 
 Brand colour sampled from the artwork: **`#c8f800`**.
 
@@ -36,8 +36,8 @@ the commit that added them. The originals are not in the repo.
 
 | Asset | Built from | Used by |
 |---|---|---|
-| `logo-lockup-dark.png` 560×200 | LOGO-02 | Nav and footer, dark theme |
-| `logo-lockup-light.png` 560×200 | LOGO-05 | Nav and footer, light theme |
+| `logo-lockup-dark.png` 560×242 | LOGO-02 | Nav and footer, dark theme |
+| `logo-lockup-light.png` 560×242 | LOGO-05 + a dark tile | Nav and footer, light theme |
 | `logo-lockup-mono.png` 420×150 | LOGO-01 | Spare, nothing yet |
 | `mark.png` 512 transparent | LOGO-03 | Manifest, anything needing the face alone |
 | `favicon.ico` 16/32/48 | LOGO-03 | Browser tab |
@@ -47,6 +47,23 @@ the commit that added them. The originals are not in the repo.
 | `og.png` 1200×630 | LOGO-02 + Geist | Open Graph, Telegram, Slack, Discord |
 | `og-x.png` 1200×600 | LOGO-02 + Geist | X, which crops 1.91:1 badly |
 | `x-banner.png` | supplied as is | **Not used on the site.** See below |
+
+### The mark needed a dark tile on the light theme
+
+Lime `#c8f800` on the light theme's `#faf7f5` measures **1.17 to 1**. That is
+not a logo sitting on a page, it is a logo disappearing into one, and it is
+what "the images sank into the background" was pointing at.
+
+The supplied pack has no lime-on-white composition anywhere. The PFP is a dark
+mark on lime; LOGO-04 is lime on black; LOGO-02 is lime on dark. Every
+composition the designer made puts the lime against something dark, so the
+light lockup now carries a dark rounded tile behind the mark rather than a
+second brand colour being invented for it. On that tile the lime measures
+**14.89 to 1**. The dark lockup is untouched at 16.4 to 1 and needs no tile.
+
+Both files are built on one canvas geometry, so the wordmark lands in the same
+place in each and the theme toggle neither resizes nor shifts the logo: both
+render at exactly 56×24 in the nav.
 
 The favicons sit on solid `#080404` rather than transparent. With the eyes and
 mouth knocked out, a transparent favicon takes the browser tab's own colour

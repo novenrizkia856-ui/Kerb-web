@@ -1053,11 +1053,19 @@
 
    Both are in the markup and CSS picks one, so the swap happens in the same
    frame as the theme change. Swapping a src in script would show the old logo
-   for a beat every time somebody hits the toggle. */
+   for a beat every time somebody hits the toggle.
+
+   The light file carries a dark tile behind the mark. Lime #c8f800 on the
+   light theme's #faf7f5 measures 1.17 to 1, which is not a logo sitting on a
+   page, it is a logo disappearing into one. Every composition in the supplied
+   pack puts the lime against something dark, so the tile follows the artwork's
+   own instinct rather than inventing a second brand colour. Both files are
+   built on one canvas geometry so the wordmark lands in the same place and the
+   toggle neither resizes nor shifts anything. */
 
 .brand-lockup {
   display: block;
-  height: 21px;
+  height: 25px;
   width: auto;
 }
 
@@ -1067,9 +1075,9 @@
 [data-theme="light"] .brand-lockup--light { display: block; }
 
 /* The nav sets its own height, so the link is just a box for the image. */
-.nav-brand .brand-lockup { height: 20px; }
+.nav-brand .brand-lockup { height: 24px; }
 
-.footer-wordmark-row .brand-lockup { height: 26px; }
+.footer-wordmark-row .brand-lockup { height: 31px; }
 
 /* Only one of the pair is ever shown, so only one should be announced. The
    nav labels the link itself and leaves both images empty; the footer has no

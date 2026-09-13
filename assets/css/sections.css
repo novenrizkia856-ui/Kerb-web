@@ -1489,13 +1489,19 @@
   outline-offset: -3px;
 }
 
-/* 2. The two routes a send takes, as the rows the app itself renders. */
+/* 2. The two routes a send takes, as the rows the app itself renders.
+
+   Bordered on all four sides, not just top and bottom. The fill is --surface,
+   which sits 1.11 to 1 above the page, so the border is the only thing holding
+   the block off the background; with two sides open it read as a slab sinking
+   into the page rather than as a panel. Every other block here is bordered the
+   whole way round and this now matches them. */
 .fig--paths {
   display: flex;
   flex-direction: column;
   gap: 1px;
   background: var(--hairline);
-  border-block: 1px solid var(--hairline);
+  border: 1px solid var(--hairline);
 }
 
 .path-row {
@@ -1536,10 +1542,15 @@
 .path-row[data-kind="wait"]  .path-addr,
 .path-row[data-kind="wait"]  .tag { color: var(--state-wait); }
 
-/* The caption sits outside the hairline block, so it is not mistaken for a
-   third row. */
+/* Outside the bordered block, so it is not mistaken for a third row. */
+.fig--paths {
+  border-bottom: 0;
+}
+
 .fig--paths .fig-cap {
-  padding: 16px 12px 0;
+  padding: 14px 12px;
+  border: 1px solid var(--hairline);
+  border-top: 0;
   background: var(--bg);
 }
 
@@ -1570,7 +1581,7 @@
   padding: 0;
   list-style: none;
   background: var(--hairline);
-  border-block: 1px solid var(--hairline);
+  border: 1px solid var(--hairline);
 }
 
 .abi-row {
