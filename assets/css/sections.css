@@ -1157,78 +1157,38 @@
 }
 
 /* ============================================================================
-   Floating cards in the hero.
-   The reference drifts collectible thumbnails here. Those were its artwork and
-   were removed in Phase 0, so the drift primitive P6 carries Kerb's own
-   vocabulary instead: small address cards in the three semantic states. No
-   image files, no requests, and the decoration says what the product does.
+   Floating marks in the hero.
+   The drift primitive P6 carrying the Kerb mark. One colour only, --float-mark:
+   white on the dark page, black on the light one. The mark file is used as a
+   mask so a single asset serves both themes; the knocked out eyes and mouth
+   show the page through, exactly as the artwork intends.
    Positions, tilts and negative delays are the reference's own, listed in
-   notes/DESIGN-SYSTEM.md 4.2 D.
+   notes/DESIGN-SYSTEM.md 4.2 D. Sizes are the reference's 56 to 86px.
    ========================================================================== */
 
-/* The reference floated 56 to 86px thumbnails and could afford to start them at
-   1024. A card wide enough to hold a truncated address is 152px, which collides
-   with the 640px hero column until 1280. Measured, not guessed. */
-.drifter--xl,
-.drifter--2xl { display: none; }
+.drifter--lg,
+.drifter--xl { display: none; }
+
+@media (min-width: 1024px) {
+  .drifter--lg { display: block; }
+}
 
 @media (min-width: 1280px) {
   .drifter--xl { display: block; }
 }
 
-@media (min-width: 1536px) {
-  .drifter--2xl { display: block; }
+.drift-mark {
+  display: block;
+  width: 72px;
+  aspect-ratio: 1;
+  background-color: var(--float-mark);
+  -webkit-mask: url("../img/mark.png") center / contain no-repeat;
+  mask: url("../img/mark.png") center / contain no-repeat;
 }
 
-.drift-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 152px;
-  padding: 10px 12px;
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: 2px;
-  box-shadow: var(--nav-float-shadow);
-}
-
-.drift-card .addr {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: .08em;
-  line-height: 1;
-  color: var(--value);
-}
-
-.drift-card .row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.drift-card .dot {
-  width: 6px;
-  height: 6px;
-  flex-shrink: 0;
-  border-radius: 9999px;
-  background: var(--muted);
-}
-
-.drift-card .tag {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  line-height: 1;
-  color: var(--faint);
-}
-
-.drift-card[data-kind="wait"]  .dot { background: var(--state-wait); }
-.drift-card[data-kind="wait"]  .tag { color: var(--state-wait); }
-.drift-card[data-kind="trust"] .dot { background: var(--state-trust); }
-.drift-card[data-kind="trust"] .tag { color: var(--value); }
-.drift-card[data-kind="fake"]  .dot { background: var(--state-danger); }
-.drift-card[data-kind="fake"]  .tag { color: var(--state-danger); }
+.drift-mark--sm { width: 56px; }
+.drift-mark--md { width: 72px; }
+.drift-mark--lg { width: 86px; }
 
 /* ============================================================================
    Section reveals.
@@ -1288,77 +1248,6 @@
   justify-content: center;
   gap: 16px;
 }
-
-/* ============================================================================
-   Floating cards in the hero.
-   The reference drifts collectible thumbnails here. Those were its artwork and
-   were removed in Phase 0, so the drift primitive P6 carries Kerb's own
-   vocabulary instead: small address cards in the three semantic states. No
-   image files, no requests, and the decoration says what the product does.
-   Positions, tilts and negative delays are the reference's own, listed in
-   notes/DESIGN-SYSTEM.md 4.2 D.
-   ========================================================================== */
-
-.drifter--lg,
-.drifter--xl { display: none; }
-
-@media (min-width: 1024px) {
-  .drifter--lg { display: block; }
-}
-
-@media (min-width: 1280px) {
-  .drifter--xl { display: block; }
-}
-
-.drift-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 152px;
-  padding: 10px 12px;
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: 2px;
-  box-shadow: var(--nav-float-shadow);
-}
-
-.drift-card .addr {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: .08em;
-  line-height: 1;
-  color: var(--value);
-}
-
-.drift-card .row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.drift-card .dot {
-  width: 6px;
-  height: 6px;
-  flex-shrink: 0;
-  border-radius: 9999px;
-  background: var(--muted);
-}
-
-.drift-card .tag {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  line-height: 1;
-  color: var(--faint);
-}
-
-.drift-card[data-kind="wait"]  .dot { background: var(--state-wait); }
-.drift-card[data-kind="wait"]  .tag { color: var(--state-wait); }
-.drift-card[data-kind="trust"] .dot { background: var(--state-trust); }
-.drift-card[data-kind="trust"] .tag { color: var(--value); }
-.drift-card[data-kind="fake"]  .dot { background: var(--state-danger); }
-.drift-card[data-kind="fake"]  .tag { color: var(--state-danger); }
 
 /* ============================================================================
    Section reveals.

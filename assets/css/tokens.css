@@ -45,6 +45,10 @@
   --brand: #c8f800;
   --accent-deep: #227da4; /* outline only */
 
+  /* Floating marks in the hero. Pure white on the dark page, pure black on
+     the light one, per the client brief. Not --text: that is warm off black. */
+  --float-mark: #ffffff;
+
   /* --- ink on accent --- */
   --ink: #000000;
 
@@ -118,6 +122,7 @@
   --accent-lit: #1d6c8e;
   --brand: #c8f800;
   --accent-deep: #17546e;
+  --float-mark: #000000;
 
   --ink: #000000;
 
