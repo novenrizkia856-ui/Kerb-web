@@ -244,7 +244,18 @@ SHELL = """<!doctype html>
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="{url}">
 <link rel="canonical" href="" data-site-url="{url}">
-<link rel="icon" href="{p}assets/img/icon.svg" type="image/svg+xml">
+<link rel="icon" href="{p}assets/img/favicon.ico" sizes="48x48">
+<link rel="icon" href="{p}assets/img/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="{p}assets/img/favicon-16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="{p}assets/img/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#080404">
+<meta property="og:image" content="{p}assets/img/og.png" data-site-url="/assets/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Kerb. First send waits. The rest fly.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{p}assets/img/og-x.png" data-site-url="/assets/img/og-x.png">
 <link rel="stylesheet" href="{p}assets/css/tokens.css">
 <link rel="stylesheet" href="{p}assets/css/base.css">
 <link rel="stylesheet" href="{p}assets/css/components.css">
@@ -266,7 +277,10 @@ SHELL = """<!doctype html>
 
   <nav class="nav-morph site-nav" aria-label="Primary" data-nav>
     <div class="nav-lead">
-      <a class="nav-brand" href="/">Kerb</a>
+      <a class="nav-brand" href="/" aria-label="Kerb, home">
+        <img class="brand-lockup brand-lockup--dark" src="{p}assets/img/logo-lockup-dark.png" alt="" width="560" height="200" decoding="async">
+        <img class="brand-lockup brand-lockup--light" src="{p}assets/img/logo-lockup-light.png" alt="" width="560" height="200" decoding="async">
+      </a>
     </div>
 
     <div class="nav-desktop">

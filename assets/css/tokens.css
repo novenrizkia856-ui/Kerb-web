@@ -38,6 +38,11 @@
   --accent: #2ba1d4;      /* fills, strokes, gradient stops */
   --accent-text: #2ba1d4; /* accent used as text or as a line that must read */
   --accent-lit: #5eb8de;  /* highlight, numerals */
+
+  /* The logo's own colour, sampled from the artwork. Used by the brand marks
+     and nothing else for now: the page accent is still the blue above, and
+     making the two agree is a decision about the product, not about CSS. */
+  --brand: #c8f800;
   --accent-deep: #227da4; /* outline only */
 
   /* --- ink on accent --- */
@@ -111,6 +116,7 @@
   --accent: #2ba1d4;
   --accent-text: #1b6483;
   --accent-lit: #1d6c8e;
+  --brand: #c8f800;
   --accent-deep: #17546e;
 
   --ink: #000000;

@@ -249,7 +249,12 @@ function renderMeta(config, root) {
   const siteUrl = config?.meta?.siteUrl ?? '';
   root.querySelectorAll('[data-site-url]').forEach((el) => {
     if (!siteUrl) {
-      el.remove();
+      /* Only drop the ones that would otherwise be empty. A tag that already
+         carries a working relative value is better than no tag: crawlers read
+         the raw HTML and never run this function, so removing it here would
+         take away the only version they ever see. */
+      const existing = el.tagName === 'META' ? el.getAttribute('content') : el.getAttribute('href');
+      if (!existing) el.remove();
       return;
     }
     const path = el.dataset.siteUrl || '';
