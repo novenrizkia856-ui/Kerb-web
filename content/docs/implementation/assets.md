@@ -1,132 +1,130 @@
 # Assets
 
-Kerb handles the native asset and ERC20 tokens. There is no allowlist and no
-blocklist. `address(0)` means native, anything else is treated as an ERC20.
+Kerb handles SOL and SPL tokens, under both the classic SPL Token program and
+Token-2022. There is no allowlist and no blocklist. The all zero key in the mint
+position means SOL; anything else must be a mint owned by one of the two token
+programs.
 
-## Native
+## SOL
 
 | Path | Behaviour |
 |---|---|
-| `send`, straight through | `msg.value` must equal `amount`, forwarded to the recipient with a full gas `call`. A failure reverts. |
-| `send`, new recipient | `msg.value` must equal `amount`, held by the contract. |
-| `cancel` | Pushed back to the sender. A failure reverts. |
-| `settle` | Pushed to the recipient. A failure credits `claimable` instead of reverting. |
-| `claim` | Pushed to the caller. A failure reverts. |
-| bare transfer to the contract | `receive()` reverts with `NativeNotAccepted`. |
+| `send`, straight through | A system transfer from the sender's wallet to the recipient. |
+| `send`, new recipient | A system transfer into the hold account, where the lamports sit above its rent deposit. |
+| `cancel` | Debited from the hold, credited to the sender. |
+| `settle` | Debited from the hold, credited to the recipient. |
+| lamports sent straight to a hold address | Untracked, and returned to the sender when the hold closes, with its rent. |
 
-`ValueMismatch` is raised when `msg.value != amount` on a native send, and
-`NativeNotAccepted` when value is attached to an ERC20 send. Both are cheap
-checks that prevent value entering the contract without a hold attached to it,
-which would violate the solvency invariant with no way to recover it.
+A program can always debit an account it owns and credit any writable account,
+so a SOL settlement has only two ways to fail, and `send` closes both before a
+hold exists:
 
-## Why settle falls back and the others do not
+**The recipient is an executable account.** The runtime refuses to change a
+program account's balance. `send` fails with `RecipientExecutable`.
 
-A recipient can be a contract that reverts on receipt, whether by design, by
-running out of gas in its receive hook, or by being broken. If `settle` reverted
-in that case, the hold could never be resolved: the window has closed so
-`cancel` is illegal, and `settle` fails forever. The funds would be stuck with
-no path out and no administrator to recover them.
+**The recipient would be left below the rent exempt minimum.** An account that
+holds nothing and receives less than 890,880 lamports would end up neither empty
+nor rent exempt, and the runtime rejects that. `send` requires every SOL hold to
+be at least that amount, `BelowRentExempt` otherwise, so any recipient ends up
+exempt.
 
-So `settle` uses the pull pattern as a fallback:
+So a SOL settlement cannot be refused, and SOL needs no pull fallback.
 
-```solidity
-bool delivered = _tryPushNative(h.recipient, h.amount);
-if (!delivered) _claimable[h.recipient][address(0)] += h.amount;
-```
+## SPL tokens
 
-and emits `Settled(..., delivered: false)` so an interface can tell the
-recipient to call `claim`.
-
-`cancel` and `claim` do not fall back, because in both the caller is the party
-receiving the funds and is present in the transaction. Reverting tells them
-something is wrong. Silently parking the money in a balance they then have to
-discover would be worse.
-
-The straight through path in `send` also does not fall back, for the same
-reason: the sender is present and can react.
-
-## ERC20
-
-All token movement goes through a `SafeERC20` style wrapper that tolerates
-tokens which return nothing instead of a boolean, and reverts with
-`TransferFailed` when a token returns false.
+All token movement uses `transfer_checked`, which carries the mint and its
+decimals, so a mismatched mint or a wrong decimals assumption fails rather than
+moving the wrong thing.
 
 | Path | Call |
 |---|---|
-| `send`, straight through | `safeTransferFrom(sender, recipient, amount)`, the contract never holds it |
-| `send`, new recipient | `safeTransferFrom(sender, address(this), amount)` |
-| `cancel` | `safeTransfer(sender, amount)` |
-| `settle` | `safeTransfer(recipient, amount)` |
-| `claim` | `safeTransfer(caller, amount)` |
+| `send`, straight through | sender's token account to the recipient's, signed by the sender. The program never holds it. |
+| `send`, new recipient | sender's token account to the hold's vault, signed by the sender |
+| `cancel` | vault to the sender's token account, signed by the hold PDA |
+| `settle` | vault to the recipient's associated token account, signed by the hold PDA, creating that account if it is missing |
+| `settle`, recipient account frozen | vault to a claim vault for the recipient, signed by the hold PDA |
+| `claim` | claim vault to any token account the recipient owns, signed by the claim PDA |
 
-### Fee on transfer tokens
+### Why settle falls back and the others do not
 
-A token may deliver less than was requested. On the hold path the amount stored
-is the balance actually received:
+A mint with a freeze authority can freeze any token account. If the recipient's
+account is frozen at settlement, a transfer into it fails, and a failed
+transfer aborts the whole transaction. The hold could then never be resolved:
+the window has closed so `cancel` is illegal, and `settle` fails forever.
 
-```solidity
-uint256 before   = IERC20(asset).balanceOf(address(this));
-IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
-uint256 received = IERC20(asset).balanceOf(address(this)) - before;
-if (received == 0) revert ZeroAmount();
+So `settle` checks the recipient's account state first, and when it is frozen
+moves the tokens to a claim account keyed by the recipient and mint, emitting
+`Settled { delivered: false }`. The recipient can `claim` them into any other
+account they own, which may not be frozen.
+
+`cancel` and `claim` do not fall back, because in both the signer is the party
+receiving the funds and is present in the transaction. Failing tells them
+something is wrong. Silently parking the money somewhere they then have to
+discover would be worse.
+
+### Transfer fees
+
+A Token-2022 mint with the transfer fee extension withholds a fee on every
+transfer. On the hold path the amount stored is what actually arrived in the
+vault:
+
+```rust
+let before = ctx.accounts.vault.amount;
+token_transfer_checked(/* sender -> vault */)?;
+ctx.accounts.vault.reload()?;
+let received = ctx.accounts.vault.amount - before;
+require!(received > 0, KerbError::ZeroAmount);
 ```
 
-Recording the requested amount instead would leave the contract owing more than
-it holds the first time such a token was used, breaking solvency invariant 3.
+Recording the requested amount instead would leave the hold owing more than its
+vault holds the first time such a mint was used, breaking invariant 3.
 
-The straight through path does not need this, because the token moves directly
-between two external accounts and the contract is never in the middle.
+**Consequence to document for users.** The fee is taken on every hop. A held
+transfer of such a token pays it into escrow and again on the way out, so the
+recipient receives less than a direct transfer would deliver, and a cancel
+returns less than was sent. Kerb never has the difference; the mint withholds it.
 
-**Consequence to document for users.** A held transfer of a fee on transfer
-token settles for slightly less than was sent. Cancelling returns the reduced
-amount, not the original, because the fee was taken by the token on the way in
-and Kerb never had it.
+### Token-2022 extensions
 
-### Rebasing tokens
-
-A token whose balances change without transfers, such as a positive rebase, will
-drift away from the amount recorded in the hold. Kerb stores an absolute amount,
-not a share, so:
-
-- A positive rebase leaves surplus in the contract that nobody can withdraw.
-  There is no sweep function and no owner, so it stays there.
-- A negative rebase can make the contract unable to pay out a hold in full. The
-  transfer reverts and the hold stays pending until enough balance exists.
-
-This is a known limitation and is not worked around. Supporting rebasing tokens
-correctly means storing shares and tracking a per token index, which is a large
-amount of machinery for a narrow case. **Do not use Kerb with rebasing tokens.**
-
-### Tokens with unusual behaviour
-
-| Token behaviour | Kerb outcome |
+| Extension | Kerb outcome |
 |---|---|
-| Returns nothing on transfer | Handled by the SafeERC20 wrapper |
-| Returns false on failure | `TransferFailed` |
-| Fee on transfer | Handled, amount recorded is what arrived |
-| Rebasing | Not supported, see above |
-| Blocklists a recipient | `settle` reverts, hold stays pending until unblocked |
-| Reverts on zero amount transfer | Unreachable, `ZeroAmount` is checked first |
-| More than one address for the same token | Two different assets as far as Kerb is concerned, and two different holds |
+| Transfer fee | Supported, as above |
+| Metadata, metadata pointer, group, interest bearing display | Irrelevant to movement, supported |
+| Immutable owner, memo required, CPI guard on the sender's account | Supported, or fails cleanly at `send` with the token program's error |
+| Default account state frozen | The vault would be created frozen, so `send` fails. Nothing is lost. |
+| Transfer hook | **Refused** on the hold path with `UnsupportedMint`. A hook is arbitrary code run on every transfer, and one that later refuses the vault's transfer strands the hold. |
+| Permanent delegate | **Refused** on the hold path. A permanent delegate can move tokens out of any account of that mint, including the vault, breaking invariant 3. |
+| Confidential transfer | **Refused** on the hold path. The vault cannot see the amount it received. |
+| Non transferable | Cannot be sent at all; the token program refuses. |
 
-The blocklist row is worth noting. A token that refuses to move to a sanctioned
-or frozen recipient will make `settle` revert, and there is no fallback for
-ERC20 because crediting `claimable` would not help, the token still refuses to
-move. The hold stays pending indefinitely. The sender cannot cancel because the
-window closed. This is a genuine trap and there is currently no clean answer to
-it.
+The refusals apply only to the hold path, where Kerb has to hold the tokens
+safely for the length of the window. The straight through path moves tokens
+directly between two wallets that already chose to hold that mint, and Kerb is
+not in the middle.
 
-**Open question.** Whether ERC20 settlement should also use a try and credit
-pattern, so a blocked recipient leaves a claimable balance rather than a stuck
-hold. It does not solve the underlying problem, the recipient still cannot
-receive, but it does move the funds out of the hold and into a balance that can
-be claimed later if the block is lifted. Leaning toward adopting it. Not yet
-specified.
+### Freeze authority on the vault
+
+This is the trap, and it should be stated plainly. A mint's freeze authority can
+freeze **any** account of that mint, the vault included. Many widely held mints,
+stablecoins among them, keep a freeze authority.
+
+If the issuer freezes a hold's vault, the tokens cannot move out of it. `cancel`
+fails, `settle` fails, and the claim fallback does not help, because the frozen
+account is the source, not the destination. The hold stays open until the
+issuer thaws the vault, possibly forever.
+
+Kerb cannot prevent this without refusing every mint that has a freeze
+authority, which would exclude most of the tokens people actually send. It is
+accepted and documented instead. See [Honest limits](../reference/limits.md).
+
+**Open question.** Whether the hold path should refuse mints with a freeze
+authority unless the sender opts in explicitly. It would make the trap a choice
+rather than a surprise. Not yet specified.
 
 ## Decimals
 
-Kerb never reads `decimals()` and never scales an amount. Values are stored and
-moved exactly as given. Formatting is entirely the interface concern, and the
-web configuration carries `token.decimals` for display only.
+Kerb never scales an amount. Values are stored and moved exactly as given, in
+the mint's smallest unit, and `transfer_checked` confirms the decimals the
+client assumed. Formatting is entirely the interface's concern.
 
 Next: [Security](security.md).

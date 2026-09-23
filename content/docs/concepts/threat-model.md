@@ -7,10 +7,10 @@ Kerb assumes all of the following. If one is false, its guarantees do not hold.
 | Assumption | If it fails |
 |---|---|
 | Your signing key is not compromised | Kerb provides nothing. See below. |
-| The chain does not reorganise past the dwell window | A settled transfer could be rewritten |
-| `block.timestamp` is accurate within a few seconds | The window is slightly shorter or longer than intended |
+| A settlement is not rolled back after you treat it as final | A settled transfer could be rewritten, see forks below |
+| The cluster clock is accurate within seconds | The window is slightly shorter or longer than intended |
 | You look at your wallet within the dwell | You never exercise the cancel you were given |
-| The contract is deployed as specified and not upgraded | It cannot be, there is no upgrade path |
+| The program is deployed as specified with its upgrade authority revoked | Whoever holds the authority can replace the rules |
 
 ## What Kerb defends against
 
@@ -39,7 +39,7 @@ sixty second minimum, and call `forget` on your real contacts. A dwell window is
 a delay on your own authority, and a thief holding your key holds your
 authority. Kerb is not a recovery mechanism and must never be described as one.
 
-**Sending around it.** Kerb is a contract you choose to call. A plain transfer
+**Sending around it.** Kerb is a program you choose to call. A plain transfer
 from your wallet to any address is unaffected by it and always available. It is
 a speed bump you opt into, not a gate on your account.
 
@@ -52,11 +52,9 @@ manual.
 [The trust list](trust-list.md). A tiny settled transfer trusts an address as
 completely as a large one.
 
-**Malicious or broken recipient contracts.** A recipient that reverts on receipt
-cannot be paid by a push transfer. Kerb handles this with a pull fallback rather
-than letting `settle` revert forever, described in
-[Assets](../implementation/assets.md). Funds are not lost but the recipient has
-to claim them.
+**A token whose issuer can freeze accounts.** Many SPL mints carry a freeze
+authority. An issuer who freezes the escrow account strands a hold: neither
+cancel nor settle can move the tokens. See [Assets](../implementation/assets.md).
 
 **Anything about what the recipient does next.** Kerb moves value to an address.
 It has no view on the address's behaviour afterwards.
@@ -69,35 +67,41 @@ The base case. Cheap, industrial, already happening at the scale of hundreds of
 millions of transactions. **Mitigated**, because writing to your history does
 not write to your list.
 
-### An attacker who can front run
+### An attacker who can reorder transactions
 
-`settle` is permissionless. An attacker who front runs a settle achieves
-delivering the recipient's funds to the recipient slightly sooner. There is no
-extractable value in the ordering. `cancel` is restricted to the sender, so it
-cannot be front run by a third party. **Not exploitable.**
+`settle` is permissionless. A block producer or searcher who reorders a settle
+achieves delivering the recipient's funds to the recipient slightly sooner or
+later. There is no extractable value in the ordering. `cancel` must be signed by
+the sender, so a third party cannot send it. **Not exploitable.**
 
 ### An attacker who wants to grief you
 
-They cannot open a hold on your behalf: `send` derives the sender from
-`msg.sender` and requires the caller to supply the funds. They cannot add to
-your list. They cannot cancel your holds. They cannot extend your dwell. The
-attack surface for griefing is close to empty, because nothing about your state
-is writable by anyone but you.
+They cannot open a hold on your behalf: `send` requires your signature and moves
+funds only from accounts you own. They cannot add to your list. They cannot
+cancel your holds. They cannot extend your dwell. They cannot block one of your
+accounts from being created: every Kerb account is a program derived address
+that only the program can initialise, and the program tolerates an address that
+somebody has pre-funded with lamports. See
+[Security](../implementation/security.md). The attack surface for griefing is
+close to empty, because nothing about your state is writable without your
+signature, except settlement, which only ever completes what you started.
 
 The one exception is the dust trust path, which requires you to sign.
 
 ### A validator nudging the clock
 
-`block.timestamp` can be moved by a small amount by whoever builds the block.
-Against a dwell measured in minutes, a shift of seconds is immaterial. Kerb does
-not use timestamps for anything finer grained.
+The cluster clock, `unix_timestamp` in the `Clock` sysvar, is a stake weighted
+estimate built from validator votes. It can drift from wall clock time by
+seconds. Against a dwell measured in minutes, a shift of seconds is immaterial.
+Kerb does not use the clock for anything finer grained, and never uses the slot
+number as a proxy for time.
 
-### A reorg
+### A fork
 
-If the chain reorganises past a settlement, that settlement is rewritten along
-with everything else in the reorganised range. This is not specific to Kerb.
-Frontends should treat a settlement as final only after the chain's usual
-finality assumption.
+Solana can briefly run competing forks. A transaction confirmed on a fork that
+is later abandoned did not happen. This is not specific to Kerb. Frontends
+should treat a settlement or a cancellation as final only at `finalized`
+commitment, not at `processed` or `confirmed`.
 
 ## Not audited
 

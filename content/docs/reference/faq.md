@@ -5,19 +5,23 @@
 ### Does Kerb hold my funds?
 
 Only during a hold, and only funds you put there yourself. A transfer to an
-address on your list never touches the contract at all: for an ERC20 it moves
-directly from you to the recipient in a single `transferFrom`.
+address on your list never touches a Kerb account at all: it moves directly from
+your wallet to the recipient in a single transfer.
 
-During a hold the contract custodies the amount. There is no owner, no pause and
-no sweep function, so the only two ways value leaves are `cancel` back to you
-and `settle` to the recipient.
+During a hold the funds sit in an escrow account owned by the program. There is
+no admin, no pause and no sweep instruction, so the only two ways value leaves
+are `cancel` back to you and `settle` to the recipient.
 
 ### Can Kerb freeze my money?
 
-No. There is no pause, no blocklist and no administrative role of any kind. The
-contract has no function that a third party can call to affect your funds. The
-only party who can stop a hold reaching its recipient is you, with `cancel`, and
-only before `releaseAt`.
+Kerb cannot. There is no pause, no blocklist and no administrative role of any
+kind, and the program has no instruction a third party can sign to affect your
+funds. The only party who can stop a hold reaching its recipient is you, with
+`cancel`, and only before `release_at`.
+
+A token's own issuer is a different matter. A mint with a freeze authority can
+freeze any account holding that token, including a Kerb escrow. See
+[Assets](../implementation/assets.md).
 
 ### Does a stolen key mean Kerb protects me?
 
@@ -29,7 +33,7 @@ must never be described as one. See
 
 ### Can somebody see who is on my list?
 
-Yes. Kerb stores trust lists in public contract storage and emits public events.
+Yes. Every contact is a public account, and every Kerb transaction is public.
 Anyone can read who has trusted whom, in either direction. Kerb provides no
 privacy and nothing in its design should be read as providing any.
 
@@ -37,13 +41,13 @@ privacy and nothing in its design should be read as providing any.
 
 ### What if nobody calls settle?
 
-Anyone can, including the recipient, and the Kerb app does it automatically. A
-hold that nobody settles sits in escrow indefinitely, which is why `settle` is
+Anyone can, including the recipient, and the Kerb app will do it automatically.
+A hold that nobody settles sits in escrow indefinitely, which is why `settle` is
 deliberately permissionless rather than restricted to the sender.
 
 ### Can I get my money back after the window closes?
 
-No. The cutoff is hard. After `releaseAt` the funds belong to the recipient and
+No. The cutoff is hard. After `release_at` the funds belong to the recipient and
 the only available action is `settle`. A soft cutoff was considered and rejected
 because it would mean a recipient never reaches certainty. See
 [The dwell window](../concepts/dwell-window.md).
@@ -51,7 +55,7 @@ because it would mean a recipient never reaches certainty. See
 ### Why not just check the address more carefully?
 
 Because the attack is built specifically to defeat that check. A poisoned
-address is generated to match the characters your interface shows you. Checking
+address is generated to match the characters your wallet shows you. Checking
 harder means checking more characters, and the attack moves to whichever
 characters the new interface displays. Kerb avoids the comparison entirely.
 
@@ -67,50 +71,61 @@ just as easily. See [The asymmetry](../concepts/the-asymmetry.md).
 
 ### Is there a token?
 
-No. There is no Kerb token, no airdrop, no points, no supply and no presale. The
-site shows a token contract address field reading `Coming Soon`, which is a
-placeholder in the interface and not a commitment that one will exist.
+Not today. There is no Kerb token, no airdrop, no points and no presale, and the
+protocol does not need one to work. The site shows a token mint field reading
+`Coming Soon`, which is a slot in the interface and not a commitment that a
+token will exist.
 
 ### Is there a fee?
 
 No. Not at the protocol level, not to a deployer, not on settle, not on cancel.
-There is no fee recipient address in the contract, so there is no field anyone
-could set one into.
+There is no fee recipient field in the program, so there is nothing anyone could
+set one into.
 
 ### What does it cost to use?
 
-Gas, to the network. A straight through transfer should cost close to a bare
-transfer plus one storage read. A held transfer costs the escrow write, and the
-later settle recovers much of that through the storage refund when the hold is
-deleted.
+Solana's transaction fee, to the network, plus refundable rent deposits. A
+straight through transfer costs about what a plain transfer does. A held
+transfer also deposits rent for the hold, and the vault for a token, and all of
+it comes back when the hold closes. The first settlement to a new address keeps
+one small deposit in your contact account, which `forget` returns. See
+[State](../protocol/state.md) for the amounts.
 
 ## Tokens
 
-### What happens with a fee on transfer token?
+### What happens with a token that charges a transfer fee?
 
-The amount recorded is what actually arrived, not what was requested, so a
-cancelled hold returns the reduced amount. The difference was taken by the token
-on the way in and Kerb never had it. See [Assets](../implementation/assets.md).
+The amount recorded is what actually arrived in escrow, not what was requested.
+The fee is taken again on the way out, so a cancelled hold returns less than was
+sent. The difference was withheld by the token and Kerb never had it. See
+[Assets](../implementation/assets.md).
 
-### What about rebasing tokens?
+### Which tokens will Kerb refuse to hold?
 
-Do not use them with Kerb. Amounts are stored absolutely rather than as shares,
-so a rebase drifts the hold away from the contract balance in either direction.
-This is a documented limitation, not a bug to be worked around later.
+Token-2022 mints with a transfer hook, a permanent delegate, or confidential
+transfers. Each of them can move or block the escrowed tokens in ways Kerb
+cannot account for. You can still send them straight through to an address
+already on your list.
 
 ## Status
 
 ### Can I use Kerb for large amounts?
 
-The contracts are not audited and not deployed. Until they are, the answer is
-no, and this page should not be read as encouragement. When they are deployed
-the answer is still your own judgement, informed by whoever audited them.
+The program is not written, not audited and not deployed. Until it is, the
+answer is no, and this page should not be read as encouragement. When it is
+deployed the answer is still your own judgement, informed by whoever audited it.
 
-### What chain does this run on?
+### What does the app do right now?
 
-Robinhood Chain, chain id 4663. Addresses are published in
+It connects a Solana wallet, reads your SOL and token balances, and walks you
+through a send up to the review. It does not ask your wallet to sign anything,
+and nothing is sent, because there is no program to send to yet.
+
+### What network does this run on?
+
+Solana, `mainnet-beta` at launch. The program id will be published in
 `config/kerb.config.json` in the web repository once deployment happens, and the
-site reads them from there with no rebuild.
+site reads it from there with no rebuild.
 
 ### Is it audited?
 

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Testing | Kerb docs</title>
-<meta name="description" content="KerbCore cannot be upgraded or paused. There is no path from a discovered bug to a fix, only a path to abandoning the deployment. That makes the test suite">
+<meta name="description" content="The Kerb program&#x27;s upgrade authority is revoked at deploy. There is no path from a discovered bug to a fix, only a path to abandoning the deployment. That">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Testing | Kerb docs">
-<meta property="og:description" content="KerbCore cannot be upgraded or paused. There is no path from a discovered bug to a fix, only a path to abandoning the deployment. That makes the test suite">
+<meta property="og:description" content="The Kerb program&#x27;s upgrade authority is revoked at deploy. There is no path from a discovered bug to a fix, only a path to abandoning the deployment. That">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs/implementation/testing">
 <link rel="canonical" href="" data-site-url="/docs/implementation/testing">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing" aria-current="page">Testing</a></li>
@@ -130,68 +130,81 @@
             <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Implementation</span><span class="sep">/</span><span>Testing</span></div>
             <div class="docs-prose">
 <h1 id="testing">Testing</h1>
-<p><code>KerbCore</code> cannot be upgraded or paused. There is no path from a discovered bug
-to a fix, only a path to abandoning the deployment. That makes the test suite
-the main line of defence rather than a formality, and it should be written
-before the contract is considered done.</p>
-<p>Suggested stack: Foundry, for <code>forge test</code>, <code>forge fuzz</code> and <code>forge invariant</code>.</p>
+<p>The Kerb program's upgrade authority is revoked at deploy. There is no path from
+a discovered bug to a fix, only a path to abandoning the deployment. That makes
+the test suite the main line of defence rather than a formality, and it should
+be written before the program is considered done.</p>
+<p>Suggested stack: Anchor for the program, LiteSVM or <code>solana-program-test</code> for
+fast in process tests with direct control of the <code>Clock</code> sysvar, and Trident for
+fuzzing.</p>
 <h2 id="unit-tests">Unit tests<a class="headerlink" href="#unit-tests" title="Permanent link">#</a></h2>
 <h3 id="send-straight-through">send, straight through<a class="headerlink" href="#send-straight-through" title="Permanent link">#</a></h3>
 <ul>
-<li>Native to a trusted recipient moves the exact value and writes no storage</li>
-<li>ERC20 to a trusted recipient calls <code>transferFrom</code> sender to recipient directly</li>
-<li>Returns <code>bytes32(0)</code></li>
-<li>Emits <code>Sent</code> with the right arguments</li>
-<li>Reverts <code>ValueMismatch</code> when <code>msg.value != amount</code> for native</li>
-<li>Reverts <code>NativeNotAccepted</code> when value is attached to an ERC20 send</li>
-<li>Reverts on a failing native push rather than falling back</li>
+<li>SOL to a trusted recipient moves the exact lamports and creates no account</li>
+<li>An SPL token to a trusted recipient calls <code>transfer_checked</code> sender to
+  recipient directly, and the vault is never touched</li>
+<li>Emits <code>Sent</code> with the right fields</li>
+<li>A contact address pre-funded with lamports but not owned by Kerb reads as
+  untrusted</li>
 </ul>
 <h3 id="send-new-recipient">send, new recipient<a class="headerlink" href="#send-new-recipient" title="Permanent link">#</a></h3>
 <ul>
-<li>Creates a hold with <code>releaseAt == block.timestamp + dwellOf(sender)</code></li>
-<li>Adds the id to the sender pending set</li>
+<li>Creates a hold with <code>release_at == clock + dwell_of(sender)</code></li>
 <li>Emits <code>Held</code></li>
-<li>Reverts <code>HoldPending</code> on a second send to the same triple</li>
-<li>Allows a second send to the same recipient with a different asset</li>
-<li>Records the received amount, not the requested amount, for a fee on transfer token</li>
-<li>Reverts <code>ZeroRecipient</code>, <code>SelfSend</code>, <code>ZeroAmount</code> on each bad input</li>
+<li>Fails <code>HoldPending</code> on a second send to the same triple</li>
+<li>Allows a second send to the same recipient with a different mint</li>
+<li>Records the received amount, not the requested amount, for a transfer fee mint</li>
+<li>Fails <code>ZeroRecipient</code>, <code>SelfSend</code>, <code>ZeroAmount</code> on each bad input</li>
+<li>Fails <code>BelowRentExempt</code> at 890,879 lamports and succeeds at 890,880</li>
+<li>Fails <code>RecipientExecutable</code> for a program account</li>
+<li>Fails <code>UnsupportedMint</code> for a mint with a transfer hook, a permanent delegate,
+  or confidential transfers</li>
+<li>Succeeds when the hold address was pre-funded with lamports</li>
 </ul>
 <h3 id="cancel">cancel<a class="headerlink" href="#cancel" title="Permanent link">#</a></h3>
 <ul>
-<li>Only the sender can call it</li>
-<li>Reverts <code>WindowClosed</code> at exactly <code>releaseAt</code></li>
-<li>Succeeds at <code>releaseAt - 1</code></li>
+<li>Only the sender can sign it</li>
+<li>Fails <code>WindowClosed</code> at exactly <code>release_at</code></li>
+<li>Succeeds at <code>release_at - 1</code></li>
 <li>Returns the full held amount</li>
-<li>Deletes the hold and removes it from the pending set</li>
-<li>Does <strong>not</strong> add the recipient to the trust list</li>
-<li>Reverts <code>HoldNotFound</code> on a second cancel</li>
+<li>Closes the hold and the vault and returns both rent deposits to the sender</li>
+<li>Does <strong>not</strong> create a contact</li>
+<li>A second cancel fails with the account missing</li>
 </ul>
 <h3 id="settle">settle<a class="headerlink" href="#settle" title="Permanent link">#</a></h3>
 <ul>
-<li>Anyone can call it, tested from a third address</li>
-<li>Reverts <code>WindowOpen</code> at <code>releaseAt - 1</code></li>
-<li>Succeeds at exactly <code>releaseAt</code></li>
+<li>Anyone can sign it, tested from a third key</li>
+<li>Fails <code>WindowOpen</code> at <code>release_at - 1</code></li>
+<li>Succeeds at exactly <code>release_at</code></li>
 <li>Delivers the full amount</li>
-<li>Adds the recipient to the trust list and emits <code>Trusted</code> once</li>
+<li>Creates the contact and emits <code>Trusted</code> once</li>
 <li>A second settlement to the same recipient does not emit <code>Trusted</code> again</li>
-<li>Reverts <code>HoldNotFound</code> on a second settle</li>
-<li>Native push to a rejecting contract credits <code>claimable</code> and emits
-  <code>Settled(delivered: false)</code> rather than reverting</li>
+<li>Funds the contact from the hold's rent: the settler's balance changes by the
+  fee and, if needed, the recipient's token account rent, and nothing else</li>
+<li>Creates the recipient's associated token account when it is missing</li>
+<li>A frozen recipient account routes to a claim and emits
+  <code>Settled { delivered: false }</code> rather than failing</li>
+<li>A second settle fails with the account missing</li>
+<li>Succeeds when the contact address was pre-funded with lamports</li>
 </ul>
-<h3 id="forget-setdwell-claim">forget, setDwell, claim<a class="headerlink" href="#forget-setdwell-claim" title="Permanent link">#</a></h3>
+<h3 id="forget-set_dwell-claim">forget, set_dwell, claim<a class="headerlink" href="#forget-set_dwell-claim" title="Permanent link">#</a></h3>
 <ul>
-<li><code>forget</code> removes and emits, and is a silent no op on an absent entry</li>
+<li><code>forget</code> closes and emits, and is a silent no op on an absent entry</li>
 <li>After <code>forget</code>, the next send to that recipient opens a hold again</li>
-<li><code>setDwell</code> accepts the bounds exactly, rejects one below <code>MIN_DWELL</code> and one
+<li><code>set_dwell</code> accepts the bounds exactly, rejects one below <code>MIN_DWELL</code> and one
   above <code>MAX_DWELL</code></li>
-<li><code>setDwell(0)</code> clears the override and <code>dwellOf</code> returns <code>DEFAULT_DWELL</code></li>
-<li>A dwell change does not move the <code>releaseAt</code> of an existing hold</li>
-<li><code>claim</code> zeroes the balance before pushing, reverts <code>NothingToClaim</code> at zero</li>
+<li><code>set_dwell(0)</code> closes the settings account and the effective dwell returns to
+  <code>DEFAULT_DWELL</code></li>
+<li>A dwell change does not move the <code>release_at</code> of an existing hold</li>
+<li><code>claim</code> pays into a destination other than the frozen account, closes the
+  claim, fails <code>NothingToClaim</code> at zero, and fails for any signer but the
+  recipient</li>
 </ul>
 <h2 id="property-and-invariant-tests">Property and invariant tests<a class="headerlink" href="#property-and-invariant-tests" title="Permanent link">#</a></h2>
-<p>Run these under <code>forge invariant</code> with a handler that randomly calls <code>send</code>,
-<code>cancel</code>, <code>settle</code>, <code>forget</code>, <code>setDwell</code> and <code>claim</code> across several actors, a
-native asset and at least two token types.</p>
+<p>Run these under Trident with a flow that randomly calls <code>send</code>, <code>cancel</code>,
+<code>settle</code>, <code>forget</code>, <code>set_dwell</code> and <code>claim</code> across several keys, SOL, a classic
+SPL mint, a Token-2022 mint with a transfer fee, and a mint with a freeze
+authority that freezes recipient accounts at random, while warping the clock.</p>
 <div class="docs-table-wrap"><table>
 <thead>
 <tr>
@@ -202,64 +215,65 @@ native asset and at least two token types.</p>
 <tbody>
 <tr>
 <td>1</td>
-<td>No hold ever has a status other than none or pending after a call returns</td>
+<td>Every open hold has <code>amount &gt; 0</code> and a <code>release_at</code> inside the dwell bounds of its creation</td>
 </tr>
 <tr>
 <td>2</td>
-<td><code>_pending[s]</code> contains exactly the ids of pending holds whose sender is <code>s</code></td>
+<td>Every Kerb account sits at the PDA derived from its own fields</td>
 </tr>
 <tr>
 <td>3</td>
-<td><strong>Solvency.</strong> For each asset, contract balance is at least the sum of pending amounts plus claimable balances</td>
+<td><strong>Solvency.</strong> Every hold's escrow and every claim's vault holds at least its <code>amount</code></td>
 </tr>
 <tr>
 <td>4</td>
-<td>A recipient appears in <code>_trusted[s]</code> only if a settle happened for that pair, and disappears only through <code>forget</code></td>
+<td>A contact exists only if a settle happened for that pair and no forget since</td>
 </tr>
 <tr>
 <td>5</td>
-<td><code>_dwell[s]</code> is zero or inside the bounds</td>
+<td>Every settings account's dwell is inside the bounds</td>
 </tr>
 <tr>
 <td>6</td>
-<td>An actor cannot change any other actor trust list, dwell, holds or claimable balance</td>
+<td>A key cannot change any other key's contacts, settings, holds or claims, except by settling a hold exactly as opened</td>
 </tr>
 <tr>
 <td>7</td>
-<td>Total value in is equal to total value out plus what is still held</td>
+<td>Total value in equals total value out plus what is still held, per mint, net of transfer fees withheld</td>
 </tr>
 </tbody>
 </table></div>
 <p>Property 3 is the one that matters most. Property 6 is the one that expresses
 the entire security claim of the protocol and should be asserted after every
-single handler call.</p>
+single call.</p>
 <h2 id="fuzz-targets">Fuzz targets<a class="headerlink" href="#fuzz-targets" title="Permanent link">#</a></h2>
 <ul>
-<li><code>send</code> with fuzzed amounts across the full <code>uint256</code> range against a token
-  with a fuzzed total supply</li>
-<li><code>setDwell</code> across the full <code>uint64</code> range, asserting only the bounds are
-  accepted</li>
-<li>Time warping between send and settle across a wide range, asserting the
-  boundary at exactly <code>releaseAt</code></li>
-<li>Fee on transfer tokens with a fuzzed fee from 0 to 100 percent, asserting the
-  stored amount always equals the delta</li>
+<li><code>send</code> with amounts across the full <code>u64</code> range, against mints with fuzzed
+  decimals and supply</li>
+<li><code>set_dwell</code> across the full <code>u64</code> range, asserting only the bounds are accepted</li>
+<li>Clock warps between send and settle across a wide range, asserting the
+  boundary at exactly <code>release_at</code></li>
+<li>Transfer fee mints with a fuzzed fee from 0 to the maximum basis points,
+  asserting the stored amount always equals the vault delta</li>
+<li>Account substitution: every instruction called with each account swapped for
+  a plausible wrong one, asserting it fails</li>
 </ul>
 <h2 id="adversarial-tests">Adversarial tests<a class="headerlink" href="#adversarial-tests" title="Permanent link">#</a></h2>
-<p>Write a malicious recipient contract that, on receiving native value, attempts
-each of:</p>
+<p>Write tests that try to cheat with accounts rather than with code, since that is
+where Solana programs break:</p>
 <ul>
-<li><code>settle</code> on the same hold id</li>
-<li><code>settle</code> on a different pending hold</li>
-<li><code>cancel</code> on the hold being settled</li>
-<li><code>send</code> back to the original sender</li>
-<li><code>forget</code> on its own list</li>
-<li><code>claim</code></li>
+<li><code>settle</code> with the recipient's token account replaced by the settler's own</li>
+<li><code>cancel</code> signed by the recipient, and by a third key</li>
+<li><code>claim</code> with a claim account belonging to another recipient</li>
+<li>A hold for one mint settled with a vault of another mint</li>
+<li>The same account passed in two mutable positions</li>
+<li>A pre-funded hold, contact and settings address for every instruction that
+  creates one</li>
+<li>A closed hold revived within the same transaction by sending it lamports</li>
 </ul>
-<p>None may succeed in extracting more than the hold amount, and the solvency
-invariant must hold afterwards.</p>
-<p>Also test a recipient that consumes all forwarded gas, and one that reverts
-unconditionally, confirming the <code>claimable</code> fallback rather than a revert.</p>
-<h2 id="gas-targets">Gas targets<a class="headerlink" href="#gas-targets" title="Permanent link">#</a></h2>
+<p>None may move more than the hold amount, and the solvency invariant must hold
+afterwards.</p>
+<h2 id="compute-targets">Compute targets<a class="headerlink" href="#compute-targets" title="Permanent link">#</a></h2>
 <p>Not correctness, but worth measuring and keeping honest, since the straight
 through path being cheap is part of the argument for using Kerb at all.</p>
 <div class="docs-table-wrap"><table>
@@ -271,29 +285,30 @@ through path being cheap is part of the argument for using Kerb at all.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>send</code> straight through, native</td>
-<td>bare transfer plus one cold SLOAD</td>
+<td><code>send</code> straight through, SOL</td>
+<td>a system transfer plus one account read</td>
 </tr>
 <tr>
-<td><code>send</code> straight through, ERC20</td>
-<td>bare <code>transferFrom</code> plus one cold SLOAD</td>
+<td><code>send</code> straight through, SPL</td>
+<td>a <code>transfer_checked</code> plus one account read</td>
 </tr>
 <tr>
 <td><code>send</code> opening a hold</td>
-<td>four storage writes plus one set insertion</td>
+<td>two account creations and one transfer</td>
 </tr>
 <tr>
 <td><code>settle</code></td>
-<td>the write cost largely refunded by the delete</td>
+<td>one transfer, at most one account creation, two closes</td>
 </tr>
 </tbody>
 </table></div>
 <h2 id="differential-check-against-the-frontend">Differential check against the frontend<a class="headerlink" href="#differential-check-against-the-frontend" title="Permanent link">#</a></h2>
-<p>The web app computes the same truncation and the same <code>willHold</code> decision that
-the contracts do. Once the contracts exist, add a test that a set of random
-addresses truncates identically in Solidity and in the JavaScript helper in
-<code>config/config.js</code>, so a display in the app can never disagree with a display
-derived from chain state.</p>
+<p>The web app truncates addresses and validates public keys itself. Once the
+program exists, add a test that a set of random keys truncates identically in
+the program's client library and in the JavaScript helper in <code>config/config.js</code>,
+and that <code>isPublicKey</code> in <code>config/solana.js</code> accepts exactly the keys
+<code>PublicKey</code> accepts, so a display in the app can never disagree with one derived
+from chain state.</p>
 <h2 id="what-is-not-covered-yet">What is not covered yet<a class="headerlink" href="#what-is-not-covered-yet" title="Permanent link">#</a></h2>
 <p>No formal verification is planned. No audit has been scheduled. When either
 happens this page should record who, what version and what was found. Until it
@@ -314,13 +329,13 @@ does, this suite is all there is.</p>
 <li><a href="#send-new-recipient">send, new recipient</a></li>
 <li><a href="#cancel">cancel</a></li>
 <li><a href="#settle">settle</a></li>
-<li><a href="#forget-setdwell-claim">forget, setDwell, claim</a></li>
+<li><a href="#forget-set_dwell-claim">forget, set_dwell, claim</a></li>
 </ul>
 </li>
 <li><a href="#property-and-invariant-tests">Property and invariant tests</a></li>
 <li><a href="#fuzz-targets">Fuzz targets</a></li>
 <li><a href="#adversarial-tests">Adversarial tests</a></li>
-<li><a href="#gas-targets">Gas targets</a></li>
+<li><a href="#compute-targets">Compute targets</a></li>
 <li><a href="#differential-check-against-the-frontend">Differential check against the frontend</a></li>
 <li><a href="#what-is-not-covered-yet">What is not covered yet</a></li>
 </ul>

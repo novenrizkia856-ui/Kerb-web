@@ -1026,23 +1026,37 @@
   font-size: var(--step--1);
 }
 
-/* The banner never hides the app behind it. A connected visitor on the wrong
-   chain still reads the same screen as everybody else, with one extra line. */
-.wallet-banner {
+/* The account menu's read only lines: wallet and network, the full public key,
+   the balances. Muted, so they read as information beside the actions, set in
+   mono so a key reads character by character, and allowed to break anywhere
+   so a 44 character key never pushes the menu past a narrow viewport. */
+.wallet-meta-group {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-block: var(--space-4);
-  padding: var(--space-3);
-  border: 1px solid var(--accent);
-  color: var(--fg);
-  font-size: var(--step--1);
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px dashed var(--line);
 }
 
-.wallet-banner[hidden] {
-  display: none;
+.wallet-meta {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* Solana addresses are base58, and base58 is case sensitive: `7xKX` and `7XKX`
+   are two different keys. Several surfaces that carry an address (buttons,
+   ledger rows, the mint strip) set their labels in capitals, which was
+   harmless for hex and is not for this. Anything holding an address opts out.
+   Important because it has to win against every more specific rule that sets
+   capitals, now and later: there is no context where changing an address's
+   case is the right rendering. */
+[data-address] {
+  text-transform: none !important;
 }
 
 /* --- brand lockup ------------------------------------------------------------

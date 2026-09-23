@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -134,52 +134,66 @@
 into your transaction history, so that a later copy and paste sends funds to the
 attacker. Resemblance is engineered on the characters interfaces display and not
 on the ones they hide. See <a href="/docs/concepts/address-poisoning">Address poisoning</a>.</p>
-<p><strong>Asset.</strong> What is being moved. <code>address(0)</code> for the native asset, otherwise an
-ERC20 token address. Kerb reads no metadata from a token and never scales an
-amount.</p>
-<p><strong>Claimable.</strong> A balance owed to a recipient after a native push failed during
-settlement. Withdrawn with <code>claim</code>. Exists so a recipient contract that rejects
-a push cannot leave a hold permanently unresolvable.</p>
+<p><strong>Claim.</strong> An account holding tokens owed to a recipient whose token account was
+frozen at settlement. Withdrawn with <code>claim</code>, into any other account the
+recipient owns. Exists so a frozen recipient account cannot leave a hold
+permanently unresolvable.</p>
+<p><strong>Contact.</strong> The account that records one recipient on one sender's trust list,
+at the address derived from <code>("contact", sender, recipient)</code>. The recipient is
+trusted exactly when this account exists.</p>
 <p><strong>Dwell.</strong> The length of the cancellation window, in seconds. Defaults to 900
 and can be set per sender between <code>MIN_DWELL</code> and <code>MAX_DWELL</code>. Read once, when a
 hold is created. See <a href="/docs/protocol/parameters">Parameters</a>.</p>
-<p><strong>Forget.</strong> Removing a recipient from your trust list. The only way out. After
-forgetting, the next transfer to that address opens a hold again.</p>
-<p><strong>Hold.</strong> A transfer sitting in escrow during its dwell window. Identified by
-<code>holdId</code>, deleted from storage the moment it settles or is cancelled.</p>
-<p><strong>holdId.</strong> <code>keccak256(abi.encode(sender, recipient, asset))</code>. Derivable
-offchain before a transaction is sent, stable across time, and scoped to the
-sender so two senders can never collide.</p>
-<p><strong>KerbCore.</strong> The contract holding all state and all value. No owner, no pause,
-no upgrade path, no fee. See <a href="/docs/implementation/core">KerbCore</a>.</p>
-<p><strong>KerbLens.</strong> A stateless read contract that shapes <code>KerbCore</code> storage into the
-queries an interface needs. Replaceable without touching <code>KerbCore</code>.</p>
-<p><strong>Pending.</strong> The single non terminal hold status. Settled and cancelled holds
-are deleted rather than stored, so pending is the only status ever read from
-storage.</p>
+<p><strong>Forget.</strong> Removing a recipient from your trust list by closing its contact
+account. The only way out. After forgetting, the next transfer to that address
+opens a hold again.</p>
+<p><strong>Hold.</strong> A transfer sitting in escrow during its dwell window. An account at
+the address derived from <code>("hold", sender, recipient, mint)</code>, closed the moment
+it settles or is cancelled.</p>
+<p><strong>Lamport.</strong> The smallest unit of SOL. One SOL is 1,000,000,000 lamports.</p>
+<p><strong>Mint.</strong> The account that defines an SPL token. Kerb addresses SOL with the all
+zero key in the mint position, and reads no metadata from a mint beyond what
+<code>transfer_checked</code> needs.</p>
+<p><strong>PDA.</strong> Program derived address. An address computed from seeds and a program
+id, with no private key, that only that program can sign for. Every Kerb account
+is one.</p>
+<p><strong>Program.</strong> Solana's term for deployed on chain code. Kerb is one program, not
+yet deployed. See <a href="/docs/implementation/core">The Kerb program</a>.</p>
+<p><strong>Program id.</strong> The address a program is deployed at. Kerb has none yet, and the
+web configuration's <code>KERB_PROGRAM_ID</code> is empty until it does.</p>
 <p><strong>Push and pull.</strong> A push sends value to a recipient directly. A pull records
 that value is owed and waits for the recipient to withdraw. Kerb pushes
-everywhere and falls back to pull only when a native push fails during
-settlement.</p>
-<p><strong>Quote.</strong> A <code>KerbLens</code> read answering whether a proposed transfer would be
+everywhere and falls back to pull only when a recipient's token account is
+frozen at settlement.</p>
+<p><strong>Quote.</strong> A client side read answering whether a proposed transfer would be
 held, for how long, and whether something is already pending for the same
-triple. What a compose screen calls as the user types.</p>
-<p><strong>releaseAt.</strong> The timestamp a hold stops being cancellable and starts being
-settleable. Fixed when the hold is created and never moves afterwards, including
-when the sender changes their dwell.</p>
+triple. What a compose screen runs as the user types. See
+<a href="/docs/implementation/lens">Reading state</a>.</p>
+<p><strong>release_at.</strong> The unix timestamp a hold stops being cancellable and starts
+being settleable. Fixed from the cluster clock when the hold is created and never
+moves afterwards, including when the sender changes their dwell.</p>
+<p><strong>Rent.</strong> The refundable deposit an account must hold to exist. Kerb's accounts
+are rent exempt, and every deposit returns to the key that funded it when the
+account closes.</p>
 <p><strong>Settle.</strong> Completing a hold after its window closes. Permissionless, so the
-recipient never depends on the sender. Delivers the funds and appends the
-recipient to the sender trust list.</p>
+recipient never depends on the sender. Delivers the funds and adds the recipient
+to the sender's trust list.</p>
+<p><strong>SPL token.</strong> A token under the SPL Token program or Token-2022. See
+<a href="/docs/implementation/assets">Assets</a> for which Token-2022 extensions Kerb holds
+and which it refuses.</p>
 <p><strong>Straight through.</strong> A transfer to a recipient already on your list. No escrow,
-no hold, no wait, one transaction, no storage written.</p>
+no hold, no wait, one instruction, no account created.</p>
 <p><strong>Trust list.</strong> The set of recipients a sender has settled a transfer to.
 Written only by settlement, removed only by <code>forget</code>, and readable by anyone.
 See <a href="/docs/concepts/trust-list">The trust list</a>.</p>
 <p><strong>Trusted.</strong> An address on your trust list. Note that this word describes a
 mechanical fact, that you have completed a transfer to this address before, and
 not a judgement about the address or whoever controls it.</p>
+<p><strong>Upgrade authority.</strong> The key that can replace a deployed program's code. Kerb's
+is revoked at deploy, so nobody can change the program. See
+<a href="/docs/implementation/security">Security</a>.</p>
 <p><strong>Window.</strong> Used interchangeably with dwell window. The period between a hold
-opening and <code>releaseAt</code>.</p>
+opening and <code>release_at</code>.</p>
 <p>Next: <a href="/docs/reference/faq">FAQ</a>.</p>
             </div>
 <nav class="docs-pager" aria-label="Page">

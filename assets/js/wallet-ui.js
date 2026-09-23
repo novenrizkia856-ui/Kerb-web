@@ -1,34 +1,29 @@
 /* wallet-ui.js
-   The connect button, the wallet picker, and the network banner.
+   The connect button, the wallet picker, and the account menu.
 
-   Keeps the DOM in one place and the chain logic in wallet.js, so this file is
+   Keeps the DOM in one place and the wallet logic in wallet.js, so this file is
    only ever deciding what a state should look like, never what it means.
 
-   Three states the button can be in:
+   Two states the button can be in:
 
      disconnected  reads `Connect wallet`, opens the picker
-     wrong chain   reads the truncated account, and a banner above the app
-                   offers to switch. The app stays visible rather than blanking,
-                   because a reader who has not connected at all sees the same
-                   screen and there is no reason to punish the one who has.
-     connected     reads the truncated account, opens a small menu with the
-                   explorer link and disconnect
+     connected     reads the truncated public key, opens a small menu with the
+                   full key, the balances, the explorer link, copy and
+                   disconnect
+
+   There is no wrong network state. A Solana wallet does not report which
+   cluster it is pointed at, and nothing here sends a transaction for the
+   cluster to matter to. Balances are read from the configured network, and the
+   menu says which one.
 
    Nothing here blanks the page and nothing throws. A visitor with no wallet
-   extension gets a picker that says so. */
+   extension gets a picker that says so and suggests where to get one. */
 
-import { truncate, explorerAddressUrl } from '../../config/config.js';
+import { explorerAddressUrl, markAddress, truncate } from '../../config/config.js';
+import { SOL, networkInfo, tokenMint, tokenSymbol } from '../../config/solana.js';
 import { announce } from './copy.js';
-import {
-  connectInjected,
-  connectWalletConnect,
-  disconnect,
-  isOnKerbChain,
-  listInjected,
-  onWalletChange,
-  restore,
-  switchChain,
-} from './wallet.js';
+import { formatUnits, solBalance, tokenBalances } from './solana-read.js';
+import { SUGGESTED_WALLETS, connect, disconnect, listWallets, onWalletChange, restore } from './wallet.js';
 
 let dialog = null;
 
@@ -43,32 +38,44 @@ function onEscape(event) {
   if (event.key === 'Escape') closeDialog();
 }
 
+function option(tag, text) {
+  const el = document.createElement(tag);
+  if (tag === 'button') el.type = 'button';
+  el.className = 'wallet-option panel-hover';
+  el.textContent = text;
+  return el;
+}
+
+function meta(text, { address = false } = {}) {
+  const p = document.createElement('p');
+  p.className = 'wallet-meta';
+  if (address) p.dataset.address = '';
+  p.textContent = text;
+  return p;
+}
+
 /* --- the picker -------------------------------------------------------------
    Built fresh each time it opens, because the set of installed wallets can
    change between openings and a cached list would offer one that has been
    uninstalled. */
-function openPicker(config, anchor) {
+function openPicker(anchor) {
   closeDialog();
 
-  const wallets = listInjected();
-  const wcId = config?.wallet?.walletConnectProjectId ?? '';
+  const wallets = listWallets();
 
   dialog = document.createElement('div');
   dialog.className = 'wallet-picker panel';
   dialog.setAttribute('role', 'dialog');
-  dialog.setAttribute('aria-label', 'Choose a wallet');
+  dialog.setAttribute('aria-label', 'Choose a Solana wallet');
 
   const list = document.createElement('div');
   list.className = 'wallet-picker-list';
 
   for (const wallet of wallets) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'wallet-option panel-hover';
-    button.textContent = wallet.name;
+    const button = option('button', wallet.name);
     button.addEventListener('click', async () => {
       button.disabled = true;
-      const result = await connectInjected(wallet, config);
+      const result = await connect(wallet);
       button.disabled = false;
       if (result.ok) closeDialog();
       else announce(result.reason);
@@ -76,28 +83,19 @@ function openPicker(config, anchor) {
     list.append(button);
   }
 
-  if (wcId) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'wallet-option panel-hover';
-    button.textContent = 'WalletConnect';
-    button.addEventListener('click', async () => {
-      button.disabled = true;
-      button.textContent = 'Opening…';
-      const result = await connectWalletConnect(config);
-      button.disabled = false;
-      button.textContent = 'WalletConnect';
-      if (result.ok) closeDialog();
-      else announce(result.reason);
-    });
-    list.append(button);
-  }
-
-  if (!list.children.length) {
+  if (!wallets.length) {
     const empty = document.createElement('p');
     empty.className = 'wallet-empty';
-    empty.textContent = 'No wallet found in this browser.';
+    empty.textContent = 'No Solana wallet found in this browser.';
     list.append(empty);
+
+    for (const suggestion of SUGGESTED_WALLETS) {
+      const link = option('a', `Get ${suggestion.name}`);
+      link.href = suggestion.url;
+      link.target = '_blank';
+      link.rel = 'noreferrer noopener';
+      list.append(link);
+    }
   }
 
   dialog.append(list);
@@ -106,8 +104,7 @@ function openPicker(config, anchor) {
 
   document.addEventListener('keydown', onEscape);
   requestAnimationFrame(() => {
-    const first = dialog?.querySelector('button');
-    first?.focus();
+    dialog?.querySelector('button, a')?.focus();
     document.addEventListener('click', onOutside, { once: true });
   });
 }
@@ -125,8 +122,35 @@ function place(el, anchor) {
   el.style.zIndex = '60';
 }
 
-/* --- the account menu ------------------------------------------------------- */
-function openAccountMenu(config, anchor, account) {
+/* --- the account menu -------------------------------------------------------
+   The balances are read when the menu opens rather than kept warm, so a
+   visitor who never opens it costs the RPC nothing. */
+async function fillBalances(config, account, host) {
+  const mint = tokenMint(config);
+  const [lamports, spl] = await Promise.all([
+    solBalance(config, account).catch(() => null),
+    mint ? tokenBalances(config, account).catch(() => null) : Promise.resolve(null),
+  ]);
+  if (!host.isConnected) return;
+
+  const rows = [];
+  rows.push(
+    meta(lamports === null ? 'SOL balance unavailable' : `${formatUnits(lamports, SOL.decimals, 4)} SOL`),
+  );
+  if (mint) {
+    const held = spl?.find((t) => t.mint === mint);
+    rows.push(
+      meta(
+        spl === null
+          ? `${tokenSymbol(config)} balance unavailable`
+          : `${held ? formatUnits(held.amount, held.decimals, 4) : '0'} ${tokenSymbol(config)}`,
+      ),
+    );
+  }
+  host.replaceChildren(...rows);
+}
+
+function openAccountMenu(config, anchor, account, walletName) {
   closeDialog();
 
   dialog = document.createElement('div');
@@ -134,24 +158,28 @@ function openAccountMenu(config, anchor, account) {
   dialog.setAttribute('role', 'dialog');
   dialog.setAttribute('aria-label', 'Wallet');
 
+  const head = document.createElement('div');
+  head.className = 'wallet-meta-group';
+  head.append(meta(`${walletName} · ${networkInfo(config).label}`), meta(account, { address: true }));
+
+  const balances = document.createElement('div');
+  balances.className = 'wallet-meta-group';
+  balances.append(meta('Reading balance…'));
+  fillBalances(config, account, balances);
+
   const list = document.createElement('div');
   list.className = 'wallet-picker-list';
 
   const url = explorerAddressUrl(config, account);
   if (url) {
-    const link = document.createElement('a');
-    link.className = 'wallet-option panel-hover';
+    const link = option('a', 'View on Solana Explorer');
     link.href = url;
     link.target = '_blank';
     link.rel = 'noreferrer noopener';
-    link.textContent = 'View on explorer';
     list.append(link);
   }
 
-  const copy = document.createElement('button');
-  copy.type = 'button';
-  copy.className = 'wallet-option panel-hover';
-  copy.textContent = 'Copy address';
+  const copy = option('button', 'Copy address');
   copy.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(account);
@@ -163,10 +191,7 @@ function openAccountMenu(config, anchor, account) {
   });
   list.append(copy);
 
-  const off = document.createElement('button');
-  off.type = 'button';
-  off.className = 'wallet-option panel-hover';
-  off.textContent = 'Disconnect';
+  const off = option('button', 'Disconnect');
   off.addEventListener('click', async () => {
     await disconnect();
     closeDialog();
@@ -174,7 +199,7 @@ function openAccountMenu(config, anchor, account) {
   });
   list.append(off);
 
-  dialog.append(list);
+  dialog.append(head, balances, list);
   document.body.append(dialog);
   place(dialog, anchor);
 
@@ -183,37 +208,6 @@ function openAccountMenu(config, anchor, account) {
     dialog?.querySelector('button, a')?.focus();
     document.addEventListener('click', onOutside, { once: true });
   });
-}
-
-/* --- the wrong network banner ----------------------------------------------- */
-function syncBanner(config, state) {
-  const host = document.querySelector('[data-wallet-banner]');
-  if (!host) return;
-
-  const wrong = state.connected && !isOnKerbChain(config);
-  host.hidden = !wrong;
-  if (!wrong) {
-    host.replaceChildren();
-    return;
-  }
-  if (host.dataset.built === '1') return;
-
-  const text = document.createElement('span');
-  text.textContent = `Wrong network. Kerb is on ${config?.chain?.name || 'another chain'}.`;
-
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'btn-corner btn--sm';
-  button.textContent = 'Switch';
-  button.addEventListener('click', async () => {
-    button.disabled = true;
-    const result = await switchChain(config);
-    button.disabled = false;
-    if (!result.ok) announce(result.reason);
-  });
-
-  host.replaceChildren(text, button);
-  host.dataset.built = '1';
 }
 
 /* --- boot ------------------------------------------------------------------- */
@@ -227,8 +221,10 @@ export function initWallet(config) {
   }
 
   const labelEl = button.querySelector('[data-wallet-label]') ?? button;
+  let current = { connected: false, account: '', walletName: '' };
 
   onWalletChange((state) => {
+    current = state;
     if (state.connected) {
       labelEl.textContent = truncate(state.account);
       button.setAttribute('aria-label', `Wallet ${state.account}`);
@@ -238,15 +234,8 @@ export function initWallet(config) {
       button.setAttribute('aria-label', 'Connect wallet');
       delete button.dataset.connected;
     }
-    /* The banner is rebuilt from the same state change, so the button and the
-       banner can never disagree about whether the chain is right. */
-    host_sync(config, state);
+    markAddress(labelEl, state.connected);
   });
-
-  function host_sync(cfg, state) {
-    delete document.querySelector('[data-wallet-banner]')?.dataset.built;
-    syncBanner(cfg, state);
-  }
 
   button.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -254,17 +243,12 @@ export function initWallet(config) {
       closeDialog();
       return;
     }
-    const state = button.dataset.connected === 'true';
-    if (state) {
-      const account = button.getAttribute('aria-label')?.replace('Wallet ', '') ?? '';
-      openAccountMenu(config, button, account);
-    } else {
-      openPicker(config, button);
-    }
+    if (current.connected) openAccountMenu(config, button, current.account, current.walletName);
+    else openPicker(button);
   });
 
   /* Silent, never prompts. */
-  restore(config);
+  restore();
 
   return { close: closeDialog };
 }

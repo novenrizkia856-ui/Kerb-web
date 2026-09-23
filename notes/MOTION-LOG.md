@@ -142,7 +142,7 @@ was reused, what is new, and why.
 
 | Field | Value |
 |---|---|
-| What | The steps, properties, limits, contract rows and stat cells fade up as their section arrives |
+| What | The steps, properties, limits, program rows and stat cells fade up as their section arrives |
 | Class | `.fade-in`, the reference's own, unchanged. `animation: fade-in var(--dur-slow) var(--ease) both` |
 | Why that class | Its `both` fill is what makes a stagger usable. An item with a delay waits at the 0 percent keyframe instead of showing first and then jumping |
 | Distance | `translateY(6px)`, the reference's value inside its own keyframe |

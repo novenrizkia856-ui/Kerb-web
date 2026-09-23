@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Frontend | Kerb docs</title>
-<meta name="description" content="How an interface talks to Kerb. This describes what the Kerb web app will do once the contracts exist, and is written so that any other wallet or frontend">
+<meta name="description" content="How an interface talks to Kerb. This describes what the Kerb web app will do once the program exists, and is written so that any other wallet or frontend c">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Frontend | Kerb docs">
-<meta property="og:description" content="How an interface talks to Kerb. This describes what the Kerb web app will do once the contracts exist, and is written so that any other wallet or frontend">
+<meta property="og:description" content="How an interface talks to Kerb. This describes what the Kerb web app will do once the program exists, and is written so that any other wallet or frontend c">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs/integration/frontend">
 <link rel="canonical" href="" data-site-url="/docs/integration/frontend">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -131,19 +131,28 @@
             <div class="docs-prose">
 <h1 id="frontend-integration">Frontend integration</h1>
 <p>How an interface talks to Kerb. This describes what the Kerb web app will do
-once the contracts exist, and is written so that any other wallet or frontend
-can do the same.</p>
+once the program exists, and is written so that any other wallet or frontend can
+do the same. The last section says what the web app does today.</p>
 <h2 id="no-backend">No backend<a class="headerlink" href="#no-backend" title="Permanent link">#</a></h2>
 <p>Kerb has no server, no indexer and no API. Everything an interface needs comes
-from two places: <code>eth_call</code> against <code>KerbLens</code>, and the event log from
-<code>KerbCore</code>. Any interface that can reach an RPC endpoint can render the complete
-state of a user.</p>
+from two places: accounts read over RPC, and the events in Kerb transactions.
+Any interface that can reach an RPC endpoint can render the complete state of a
+user.</p>
 <p>That constraint is deliberate. An interface that depends on a Kerb operated
 service reintroduces a party who can go away, censor, or be compelled. See
 <a href="/docs/protocol/overview">Protocol overview</a>.</p>
+<h2 id="connecting-a-wallet">Connecting a wallet<a class="headerlink" href="#connecting-a-wallet" title="Permanent link">#</a></h2>
+<p>Use Wallet Standard discovery, which Phantom, Solflare, Backpack and most other
+Solana wallets support, and which <code>@solana/wallet-adapter</code> is built on. The Kerb
+web app does it without a library: it announces <code>wallet-standard:app-ready</code> and
+listens for <code>wallet-standard:register-wallet</code>, then connects through the
+wallet's <code>standard:connect</code> feature. See <code>assets/js/wallet.js</code>.</p>
+<p>The connected account's <code>address</code> is its base58 public key. Nothing else about
+the wallet is needed to read state.</p>
 <h2 id="the-compose-screen">The compose screen<a class="headerlink" href="#the-compose-screen" title="Permanent link">#</a></h2>
-<p>As the user types a recipient, call <code>KerbLens.quote</code>:</p>
-<pre><code class="language-js">const q = await lens.quote(sender, recipient, asset);
+<p>As the user types a recipient, run the quote from
+<a href="/docs/implementation/lens">Reading state</a>:</p>
+<pre><code class="language-js">const q = await quote(connection, sender, recipient, mint);
 </code></pre>
 <div class="docs-table-wrap"><table>
 <thead>
@@ -171,122 +180,156 @@ service reintroduces a party who can go away, censor, or be compelled. See
 </tr>
 </tbody>
 </table></div>
-<p>Show the duration, not a wall clock time. <code>q.releaseAt</code> is projected from the
-current block and will be a little different once the transaction lands.</p>
-<p>Debounce the call and only fire it on a well formed address. The regular
-expression used across the Kerb app is:</p>
-<pre><code class="language-js">/^0x[a-fA-F0-9]{40}$/
+<p>Show the duration, not a wall clock time. <code>release_at</code> is fixed by the cluster
+clock when the transaction lands.</p>
+<p>Debounce the call and only fire it on a valid public key. A valid key is base58
+that decodes to exactly 32 bytes; the character pattern alone is not enough,
+because plenty of 44 character base58 strings decode to 33 bytes. The Kerb app
+checks both, in <code>isPublicKey</code> in <code>config/solana.js</code>:</p>
+<pre><code class="language-js">/^[1-9A-HJ-NP-Za-km-z]{32,44}$/   // then decode and require 32 bytes
 </code></pre>
 <h2 id="signing-a-send">Signing a send<a class="headerlink" href="#signing-a-send" title="Permanent link">#</a></h2>
-<p>Native:</p>
-<pre><code class="language-js">await core.send(recipient, ZERO_ADDRESS, amount, { value: amount });
+<p>With the Anchor client, SOL:</p>
+<pre><code class="language-js">await program.methods
+  .send(new BN(lamports))
+  .accounts({ sender, recipient, mint: null, /* derived accounts */ })
+  .rpc();
 </code></pre>
-<p>ERC20, which needs an allowance first, and only on the hold path:</p>
-<pre><code class="language-js">await token.approve(core.address, amount);
-await core.send(recipient, token.address, amount);
-</code></pre>
-<p>Request an exact allowance, not an unlimited one. Kerb cannot enforce that, so
-it falls to the interface.</p>
+<p>An SPL token is the same instruction with the mint and the token accounts
+supplied. There is no approval step before it: the sender's signature on the
+send transaction authorises the transfer inside it, and nothing outlives the
+transaction.</p>
+<p>Show the user what they are signing in words before the wallet opens. A wallet
+simulation that says "0.5 SOL leaves your wallet" is true of both paths, and only
+the interface can say which of them this is.</p>
 <h2 id="watching-a-hold">Watching a hold<a class="headerlink" href="#watching-a-hold" title="Permanent link">#</a></h2>
-<p>The hold id is derivable before the transaction confirms:</p>
-<pre><code class="language-js">const holdId = keccak256(abiEncode(['address','address','address'],
-                                   [sender, recipient, asset]));
+<p>The hold address is derivable before the transaction confirms:</p>
+<pre><code class="language-js">const hold = holdOf(sender, recipient, mint);
 </code></pre>
-<p>which means the pending card can be rendered optimistically and reconciled when
-the <code>Held</code> event arrives. Then poll or subscribe:</p>
-<pre><code class="language-js">const h = await lens.hold(holdId);
-// h.remaining   seconds left, 0 once releasable
-// h.releasable  true once settle will succeed
+<p>so the pending card can be rendered as soon as the user signs and reconciled
+when the account appears. Then subscribe:</p>
+<pre><code class="language-js">connection.onAccountChange(hold, (info) =&gt; render(decodeHold(info.data)), 'confirmed');
 </code></pre>
-<p>Drive the countdown from <code>h.remaining</code> rather than from a local timer started at
-signing. Local clocks drift and the chain is the authority.</p>
+<p>Drive the countdown from <code>release_at</code> against the cluster clock, not from a
+local timer started at signing. Local clocks drift and the chain is the
+authority.</p>
 <h2 id="cancel-and-settle">Cancel and settle<a class="headerlink" href="#cancel-and-settle" title="Permanent link">#</a></h2>
 <p><code>cancel</code> is the whole point of the product and should be the most prominent
 control on the pending card, available for the entire window with no
 confirmation step in front of it.</p>
-<pre><code class="language-js">await core.cancel(holdId);
+<pre><code class="language-js">await program.methods.cancel().accounts({ sender, hold /* ... */ }).rpc();
 </code></pre>
-<p><code>settle</code> is permissionless, so the interface can call it on the user behalf as
-soon as <code>releasable</code> turns true, without asking. The Kerb app will do this for
-the sender. A recipient side interface can do the same.</p>
-<pre><code class="language-js">if (h.releasable) await core.settle(holdId);
+<p><code>settle</code> is permissionless, so the interface can send it on the user's behalf as
+soon as the window closes. The Kerb app will do this for the sender. A recipient
+side interface can do the same. Either way somebody pays the transaction fee,
+and the recipient's token account rent if it has to be created, so an interface
+should say so the first time.</p>
+<pre><code class="language-js">if (now &gt;= hold.releaseAt) await program.methods.settle().accounts({ /* ... */ }).rpc();
 </code></pre>
 <h2 id="reading-the-list">Reading the list<a class="headerlink" href="#reading-the-list" title="Permanent link">#</a></h2>
-<pre><code class="language-js">const { page, total } = await lens.trusted(sender, 0, 100);
+<pre><code class="language-js">const contacts = await contactsOf(connection, sender);
 </code></pre>
-<p>Remember that set order is arbitrary and shifts when an entry is removed. For a
-stable, chronological list build it from the log instead:</p>
-<pre><code>Trusted(sender = me)  minus  Forgotten(sender = me)   in block order
-</code></pre>
-<p>See <a href="/docs/protocol/events-and-errors">Events and errors</a> for the full set of
-reconstructions available from logs.</p>
+<p>Sort client side by the <code>since</code> field. For the exact order of additions and
+removals, read <code>Trusted</code> and <code>Forgotten</code> from the transaction history. See
+<a href="/docs/protocol/events-and-errors">Events and errors</a>.</p>
 <h2 id="displaying-an-address">Displaying an address<a class="headerlink" href="#displaying-an-address" title="Permanent link">#</a></h2>
-<p>Truncate as first six characters, the ellipsis character U+2026, last four:</p>
+<p>Truncate as first four characters, the ellipsis character U+2026, last four, the
+same form Solana wallets use:</p>
 <pre><code>example address, not a deployment
 
-0x71C7656EC7ab88b098defB751B7401B5f6d8976F  -&gt;  0x71C7…976F
+ZtQWM4ZkTjPu3yo5EWyQgbJJzstEfc7THPKmxFUsvWN  -&gt;  ZtQW…svWN
 </code></pre>
-<p>Two rules that matter more than they look:</p>
+<p>Three rules that matter more than they look:</p>
 <p><strong>Copy must always copy the full address.</strong> Never the truncated form. The Kerb
-app has a test that intercepts the clipboard write and compares it to the source
-value character for character, because this is exactly the kind of thing that
-breaks quietly.</p>
+app has been checked by intercepting the clipboard write and comparing it to the
+source value character for character, because this is exactly the kind of thing
+that breaks quietly.</p>
+<p><strong>Never change an address's case.</strong> Base58 is case sensitive: <code>ZtQW</code> and <code>ZTQW</code>
+are different keys. A label style that sets text in capitals is harmless for
+most text and wrong for an address. The Kerb app marks every element that holds
+an address with <code>data-address</code>, and its stylesheet exempts those from any
+uppercase styling.</p>
 <p><strong>Do not present truncation as verification.</strong> A poisoned address renders
 identically to a real one under any truncation. The interface should never imply
 that a matching prefix and suffix means anything. Kerb works because it does not
 depend on that comparison, and the interface should not undo the point by
 implying the user can eyeball it.</p>
 <h2 id="handling-errors">Handling errors<a class="headerlink" href="#handling-errors" title="Permanent link">#</a></h2>
-<p>Map custom error selectors to messages locally. The contract carries no revert
-strings, so the wording lives in the interface and can improve without touching
-an immutable contract.</p>
+<p>Map Anchor error numbers to messages locally. The wording lives in the
+interface and can improve without touching a program that can no longer change.</p>
 <div class="docs-table-wrap"><table>
 <thead>
 <tr>
 <th>Error</th>
+<th>Number</th>
 <th>Suggested message</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>HoldPending</code></td>
+<td>6005</td>
 <td>A transfer to this address is already waiting.</td>
 </tr>
 <tr>
 <td><code>WindowClosed</code></td>
+<td>6008</td>
 <td>The window has closed. This transfer will settle.</td>
 </tr>
 <tr>
 <td><code>WindowOpen</code></td>
+<td>6007</td>
 <td>Still holding. This can settle once the window closes.</td>
 </tr>
 <tr>
 <td><code>NotSender</code></td>
+<td>6006</td>
 <td>Only the sender can cancel this.</td>
 </tr>
 <tr>
 <td><code>DwellOutOfRange</code></td>
+<td>6009</td>
 <td>Choose between one minute and seven days.</td>
 </tr>
 <tr>
-<td><code>ValueMismatch</code></td>
-<td>The amount and the attached value do not match.</td>
+<td><code>BelowRentExempt</code></td>
+<td>6003</td>
+<td>Send at least 0.00089088 SOL to a new address.</td>
+</tr>
+<tr>
+<td><code>UnsupportedMint</code></td>
+<td>6011</td>
+<td>This token cannot be held by Kerb. Send it directly instead.</td>
 </tr>
 <tr>
 <td><code>NothingToClaim</code></td>
+<td>6010</td>
 <td>There is nothing to claim.</td>
+</tr>
+<tr>
+<td><code>AccountNotInitialized</code></td>
+<td>3012</td>
+<td>That transfer has already settled or been cancelled.</td>
 </tr>
 </tbody>
 </table></div>
-<h2 id="the-mock-app-shell">The mock app shell<a class="headerlink" href="#the-mock-app-shell" title="Permanent link">#</a></h2>
-<p>The <code>/app</code> route in this repository already implements the full four state flow
-against mock data: compose, review, holding, settled. It runs a 20 second
-countdown instead of the configured dwell so the demo is watchable, and shows a
-permanent notice that contracts are not connected.</p>
-<p>When the contracts land, the work is to replace <code>assets/js/app-mock.js</code> with
-real reads and writes. The state machine in <code>assets/js/app.js</code>, the waiting
-window visual and the contacts list are already shaped around the real
-lifecycle, so the interface itself should not need to change much.</p>
+<h2 id="what-the-web-app-does-today">What the web app does today<a class="headerlink" href="#what-the-web-app-does-today" title="Permanent link">#</a></h2>
+<p>The Kerb program is not deployed, so the <code>/app</code> route in this repository does
+not send anything. It runs in one of two modes:</p>
+<p><strong>Demo, before a wallet connects.</strong> The full four state flow, compose, review,
+holding, settled, against invented contacts, with a 20 second countdown so the
+demo is watchable. No network request is made and nothing is signed.</p>
+<p><strong>Read only, after a Solana wallet connects.</strong> The compose screen lists the
+wallet's real SOL and SPL balances, read over RPC, and the review checks the
+amount against them. The flow stops at review, which states the route the
+transfer would take and that execution is not live. The contact list is empty,
+because the list lives in the program and there is no program to read it from.</p>
+<p>The wallet code in <code>assets/js/wallet.js</code> connects, reads the public key and
+disconnects. It never reads a wallet's signing features, and no code in the
+repository builds a transaction. When the program lands, the work is to add a
+source to <code>assets/js/app-source.js</code> that reads accounts and builds the six
+instructions above. The state machine in <code>assets/js/app.js</code>, the waiting window
+visual and the contacts list are already shaped around the real lifecycle.</p>
 <p>Next: <a href="/docs/reference/glossary">Glossary</a>.</p>
             </div>
 <nav class="docs-pager" aria-label="Page">
@@ -299,6 +342,7 @@ lifecycle, so the interface itself should not need to change much.</p>
 <aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
 <ul>
 <li><a href="#no-backend">No backend</a></li>
+<li><a href="#connecting-a-wallet">Connecting a wallet</a></li>
 <li><a href="#the-compose-screen">The compose screen</a></li>
 <li><a href="#signing-a-send">Signing a send</a></li>
 <li><a href="#watching-a-hold">Watching a hold</a></li>
@@ -306,7 +350,7 @@ lifecycle, so the interface itself should not need to change much.</p>
 <li><a href="#reading-the-list">Reading the list</a></li>
 <li><a href="#displaying-an-address">Displaying an address</a></li>
 <li><a href="#handling-errors">Handling errors</a></li>
-<li><a href="#the-mock-app-shell">The mock app shell</a></li>
+<li><a href="#what-the-web-app-does-today">What the web app does today</a></li>
 </ul>
 </div>
 </aside>

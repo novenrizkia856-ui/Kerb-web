@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Events and errors | Kerb docs</title>
-<meta name="description" content="Every state change emits exactly one primary event, plus Trusted when a settlement adds a recipient that was not already on the list. The log is complete e">
+<meta name="description" content="Every state change emits exactly one primary event, plus Trusted when a settlement adds a recipient that was not already on the list. Events are emitted th">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Events and errors | Kerb docs">
-<meta property="og:description" content="Every state change emits exactly one primary event, plus Trusted when a settlement adds a recipient that was not already on the list. The log is complete e">
+<meta property="og:description" content="Every state change emits exactly one primary event, plus Trusted when a settlement adds a recipient that was not already on the list. Events are emitted th">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs/protocol/events-and-errors">
 <link rel="canonical" href="" data-site-url="/docs/protocol/events-and-errors">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -132,169 +132,193 @@
 <h1 id="events-and-errors">Events and errors</h1>
 <h2 id="events">Events<a class="headerlink" href="#events" title="Permanent link">#</a></h2>
 <p>Every state change emits exactly one primary event, plus <code>Trusted</code> when a
-settlement adds a recipient that was not already on the list. The log is
-complete enough to rebuild any sender view without reading storage, which is
-what lets a frontend work without a backend.</p>
-<pre><code class="language-solidity">event Sent(
-    address indexed sender,
-    address indexed recipient,
-    address indexed asset,
-    uint256 amount
-);
+settlement adds a recipient that was not already on the list. Events are emitted
+through a self CPI (Anchor's <code>emit_cpi!</code>), so they are recorded as instruction
+data in the transaction rather than as log lines, which RPC nodes are free to
+truncate. That makes the history complete enough to rebuild any sender's past
+without a backend.</p>
+<pre><code class="language-rust">#[event]
+pub struct Sent {
+    pub sender: Pubkey,
+    pub recipient: Pubkey,
+    pub mint: Pubkey,
+    pub amount: u64,
+}
 
-event Held(
-    bytes32 indexed holdId,
-    address indexed sender,
-    address indexed recipient,
-    address asset,
-    uint256 amount,
-    uint64  releaseAt
-);
+#[event]
+pub struct Held {
+    pub hold: Pubkey,
+    pub sender: Pubkey,
+    pub recipient: Pubkey,
+    pub mint: Pubkey,
+    pub amount: u64,
+    pub release_at: i64,
+}
 
-event Cancelled(
-    bytes32 indexed holdId,
-    address indexed sender,
-    address indexed recipient,
-    address asset,
-    uint256 amount
-);
+#[event]
+pub struct Cancelled {
+    pub hold: Pubkey,
+    pub sender: Pubkey,
+    pub recipient: Pubkey,
+    pub mint: Pubkey,
+    pub amount: u64,
+}
 
-event Settled(
-    bytes32 indexed holdId,
-    address indexed sender,
-    address indexed recipient,
-    address asset,
-    uint256 amount,
-    bool    delivered      // false when the amount went to claimable instead
-);
+#[event]
+pub struct Settled {
+    pub hold: Pubkey,
+    pub sender: Pubkey,
+    pub recipient: Pubkey,
+    pub mint: Pubkey,
+    pub amount: u64,
+    pub delivered: bool,     // false when the amount went to a claim instead
+}
 
-event Trusted(
-    address indexed sender,
-    address indexed recipient
-);
+#[event]
+pub struct Trusted {
+    pub sender: Pubkey,
+    pub recipient: Pubkey,
+}
 
-event Forgotten(
-    address indexed sender,
-    address indexed recipient
-);
+#[event]
+pub struct Forgotten {
+    pub sender: Pubkey,
+    pub recipient: Pubkey,
+}
 
-event DwellSet(
-    address indexed sender,
-    uint64 dwellSeconds
-);
+#[event]
+pub struct DwellSet {
+    pub sender: Pubkey,
+    pub dwell_seconds: u64,
+}
 
-event Claimed(
-    address indexed recipient,
-    address indexed asset,
-    uint256 amount
-);
+#[event]
+pub struct Claimed {
+    pub recipient: Pubkey,
+    pub mint: Pubkey,
+    pub amount: u64,
+}
 </code></pre>
-<h3 id="indexing-notes">Indexing notes<a class="headerlink" href="#indexing-notes" title="Permanent link">#</a></h3>
-<p><code>Sent</code>, <code>Held</code> and <code>Cancelled</code> index sender and recipient so a frontend can
-filter a user view with one topic filter in each direction. <code>Held</code> indexes
-<code>holdId</code> rather than <code>asset</code>, because three indexed slots is the EVM limit and a
-hold is far more often looked up by id than by asset.</p>
-<p><code>Settled</code> carries <code>delivered</code>. When it is false the recipient was credited to
-<code>claimable</code> because a push failed, and an interface should tell them to call
-<code>claim</code>. See <a href="/docs/implementation/assets">Assets</a>.</p>
+<h3 id="finding-events">Finding events<a class="headerlink" href="#finding-events" title="Permanent link">#</a></h3>
+<p>Solana has no topic index. A transaction is found through the accounts it
+touched: <code>getSignaturesForAddress</code> on an account returns every transaction that
+included it, and <code>getTransaction</code> returns the events inside each. Every Kerb
+instruction includes the sender's wallet, the recipient's wallet and the account
+being changed, so each of them is a handle on its history.</p>
+<p><code>Settled</code> carries <code>delivered</code>. When it is false the recipient's token account
+was frozen and the amount went to a claim account instead, and an interface
+should tell them to call <code>claim</code>. See <a href="/docs/implementation/assets">Assets</a>.</p>
 <p><code>Trusted</code> is emitted only on a genuinely new addition, never on a repeat
 settlement to an address already on the list. A consumer can therefore treat the
-<code>Trusted</code> log as the exact contents of a sender list, applying <code>Forgotten</code> as
-removals, without deduplicating.</p>
-<h3 id="rebuilding-a-view-from-logs">Rebuilding a view from logs<a class="headerlink" href="#rebuilding-a-view-from-logs" title="Permanent link">#</a></h3>
+<code>Trusted</code> events as the exact contents of a sender's list, applying <code>Forgotten</code>
+as removals, without deduplicating.</p>
+<h3 id="current-state-versus-history">Current state versus history<a class="headerlink" href="#current-state-versus-history" title="Permanent link">#</a></h3>
+<p>For current state, do not replay events at all. Read the accounts, which are the
+state. Events are for history and ordering.</p>
 <div class="docs-table-wrap"><table>
 <thead>
 <tr>
 <th>View</th>
-<th>Filter</th>
+<th>Source</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>My trust list</td>
-<td><code>Trusted(sender = me)</code> minus <code>Forgotten(sender = me)</code>, in block order</td>
+<td>My trust list, now</td>
+<td>contact accounts filtered on <code>sender = me</code></td>
 </tr>
 <tr>
-<td>My pending holds</td>
-<td><code>Held(sender = me)</code> minus <code>Settled</code> and <code>Cancelled</code> on the same <code>holdId</code></td>
+<td>My pending holds, now</td>
+<td>hold accounts filtered on <code>sender = me</code></td>
+</tr>
+<tr>
+<td>My trust list, in the order it was built</td>
+<td><code>Trusted(sender = me)</code> minus <code>Forgotten(sender = me)</code>, in slot order</td>
 </tr>
 <tr>
 <td>Payments I received</td>
-<td><code>Sent(recipient = me)</code> and <code>Settled(recipient = me)</code></td>
+<td><code>Sent</code> and <code>Settled</code> in transactions that include my wallet</td>
 </tr>
 <tr>
 <td>Who has me on their list</td>
-<td><code>Trusted(recipient = me)</code> minus <code>Forgotten(recipient = me)</code></td>
+<td>contact accounts filtered on <code>recipient = me</code>, at byte offset 40</td>
 </tr>
 </tbody>
 </table></div>
 <p>The last row is worth noticing. It is public. Anybody can see who has trusted
-whom, because the events are public and the storage is public. Kerb does not
+whom, because accounts are public and transactions are public. Kerb does not
 claim privacy and nothing in this design should be read as providing it.</p>
 <h2 id="errors">Errors<a class="headerlink" href="#errors" title="Permanent link">#</a></h2>
-<p>Custom errors throughout, no revert strings.</p>
-<pre><code class="language-solidity">error ZeroRecipient();      // recipient is address(0)
-error ZeroAmount();         // amount is 0
-error SelfSend();           // recipient == msg.sender
-error ValueMismatch();      // msg.value does not match the native amount
-error NativeNotAccepted();  // ether sent alongside an ERC20 transfer
-error HoldNotFound();       // no pending hold at this id
-error HoldPending();        // a hold for this sender, recipient and asset already exists
-error NotSender();          // caller is not the hold sender
-error WindowOpen();         // settle attempted before releaseAt
-error WindowClosed();       // cancel attempted at or after releaseAt
-error DwellOutOfRange();    // setDwell outside [MIN_DWELL, MAX_DWELL] and not 0
-error NothingToClaim();     // claim with a zero balance
-error TransferFailed();     // ERC20 transfer returned false or reverted
+<p>A single <code>#[error_code]</code> enum. Anchor numbers custom errors from 6000 in
+declaration order, so the order below is part of the interface and must never be
+rearranged.</p>
+<pre><code class="language-rust">#[error_code]
+pub enum KerbError {
+    ZeroRecipient,        // 6000  recipient is the all zero key
+    ZeroAmount,           // 6001  amount is 0, or nothing arrived in escrow
+    SelfSend,             // 6002  recipient is the sender
+    BelowRentExempt,      // 6003  a SOL hold under the rent exempt minimum
+    RecipientExecutable,  // 6004  a SOL send to a program account
+    HoldPending,          // 6005  a hold for this sender, recipient and mint is open
+    NotSender,            // 6006  signer is not the hold's sender
+    WindowOpen,           // 6007  settle before release_at
+    WindowClosed,         // 6008  cancel at or after release_at
+    DwellOutOfRange,      // 6009  set_dwell outside [MIN_DWELL, MAX_DWELL] and not 0
+    NothingToClaim,       // 6010  claim with a zero balance
+    UnsupportedMint,      // 6011  a Token-2022 extension Kerb refuses, see Assets
+}
 </code></pre>
-<h3 id="which-function-raises-what">Which function raises what<a class="headerlink" href="#which-function-raises-what" title="Permanent link">#</a></h3>
+<p><code>HoldNotFound</code> has no entry. A hold that does not exist is an account that does
+not exist, and Anchor rejects the instruction before Kerb's code runs, with its
+own <code>AccountNotInitialized</code>. An interface should map that to the same message.</p>
+<h3 id="which-instruction-raises-what">Which instruction raises what<a class="headerlink" href="#which-instruction-raises-what" title="Permanent link">#</a></h3>
 <div class="docs-table-wrap"><table>
 <thead>
 <tr>
-<th>Function</th>
-<th>Can revert with</th>
+<th>Instruction</th>
+<th>Can fail with</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>send</code></td>
-<td><code>ZeroRecipient</code>, <code>ZeroAmount</code>, <code>SelfSend</code>, <code>ValueMismatch</code>, <code>NativeNotAccepted</code>, <code>HoldPending</code>, <code>TransferFailed</code></td>
+<td><code>ZeroRecipient</code>, <code>ZeroAmount</code>, <code>SelfSend</code>, <code>BelowRentExempt</code>, <code>RecipientExecutable</code>, <code>HoldPending</code>, <code>UnsupportedMint</code>, and the token program's own errors</td>
 </tr>
 <tr>
 <td><code>cancel</code></td>
-<td><code>HoldNotFound</code>, <code>NotSender</code>, <code>WindowClosed</code>, <code>TransferFailed</code></td>
+<td><code>NotSender</code>, <code>WindowClosed</code>, a missing hold</td>
 </tr>
 <tr>
 <td><code>settle</code></td>
-<td><code>HoldNotFound</code>, <code>WindowOpen</code>, <code>TransferFailed</code></td>
+<td><code>WindowOpen</code>, a missing hold</td>
 </tr>
 <tr>
 <td><code>forget</code></td>
-<td>none, removing an absent entry is a no op</td>
+<td>none, forgetting an absent entry is a no op</td>
 </tr>
 <tr>
-<td><code>setDwell</code></td>
+<td><code>set_dwell</code></td>
 <td><code>DwellOutOfRange</code></td>
 </tr>
 <tr>
 <td><code>claim</code></td>
-<td><code>NothingToClaim</code>, <code>TransferFailed</code></td>
+<td><code>NothingToClaim</code></td>
 </tr>
 </tbody>
 </table></div>
 <p><code>forget</code> on an address that is not on the list succeeds silently and emits
-nothing. Making it revert would leak whether an address is on a list to a caller
-who is guessing, and would make a batch cleanup awkward for no benefit.</p>
-<h3 id="why-no-revert-strings">Why no revert strings<a class="headerlink" href="#why-no-revert-strings" title="Permanent link">#</a></h3>
-<p>Custom errors cost less to deploy and less to revert with, and they carry a
-selector a frontend can match on exactly rather than comparing text. The Kerb
-frontend maps each selector to a message in its own copy, so the wording can
-improve without touching an immutable contract.</p>
-<p>Next: <a href="/docs/implementation/core">KerbCore</a>.</p>
+nothing. Making it fail would leak nothing new, since contact accounts are
+public, but it would make a batch cleanup awkward for no benefit.</p>
+<h3 id="why-numbered-errors-and-no-messages-in-the-interface">Why numbered errors and no messages in the interface<a class="headerlink" href="#why-numbered-errors-and-no-messages-in-the-interface" title="Permanent link">#</a></h3>
+<p>Anchor attaches a message to each error in the program binary, but an interface
+should not show it. The number is exact and stable; the message is whatever the
+author typed. The Kerb frontend maps each number to a sentence in its own copy,
+so the wording can improve without touching a program that can no longer change.</p>
+<p>Next: <a href="/docs/implementation/core">The Kerb program</a>.</p>
             </div>
 <nav class="docs-pager" aria-label="Page">
 <a class="panel panel-hover docs-pager-link" href="/docs/protocol/parameters"><span class="label">Previous</span><span class="docs-pager-title">Parameters</span></a>
-<a class="panel panel-hover docs-pager-link docs-pager-link--next" href="/docs/implementation/core"><span class="label">Next</span><span class="docs-pager-title">KerbCore</span></a>
+<a class="panel panel-hover docs-pager-link docs-pager-link--next" href="/docs/implementation/core"><span class="label">Next</span><span class="docs-pager-title">The Kerb program</span></a>
 </nav>
           </article>
         </div>
@@ -302,13 +326,13 @@ improve without touching an immutable contract.</p>
 <aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
 <ul>
 <li><a href="#events">Events</a><ul>
-<li><a href="#indexing-notes">Indexing notes</a></li>
-<li><a href="#rebuilding-a-view-from-logs">Rebuilding a view from logs</a></li>
+<li><a href="#finding-events">Finding events</a></li>
+<li><a href="#current-state-versus-history">Current state versus history</a></li>
 </ul>
 </li>
 <li><a href="#errors">Errors</a><ul>
-<li><a href="#which-function-raises-what">Which function raises what</a></li>
-<li><a href="#why-no-revert-strings">Why no revert strings</a></li>
+<li><a href="#which-instruction-raises-what">Which instruction raises what</a></li>
+<li><a href="#why-numbered-errors-and-no-messages-in-the-interface">Why numbered errors and no messages in the interface</a></li>
 </ul>
 </li>
 </ul>

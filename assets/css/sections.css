@@ -100,7 +100,7 @@
 .how,
 .props,
 .limits,
-.contracts {
+.program {
   padding: 40px 24px 48px;
 }
 
@@ -109,7 +109,7 @@
   .how,
   .props,
   .limits,
-  .contracts {
+  .program {
     padding-inline: 40px;
   }
 }
@@ -430,7 +430,7 @@
 .how-title,
 .props-title,
 .limits-title,
-.contracts-title {
+.program-title {
   padding-bottom: 32px;
 }
 
@@ -510,16 +510,16 @@
 }
 
 /* ============================================================================
-   7. Contracts
+   7. Program
    ========================================================================== */
 
-.contract-ledger { gap: 14px; }
+.program-ledger { gap: 14px; }
 
-.contract-row { flex-wrap: wrap; }
+.program-row { flex-wrap: wrap; }
 
-.contract-row .v { color: var(--value); }
+.program-row .v { color: var(--value); }
 
-.contract-act { flex-shrink: 0; }
+.program-act { flex-shrink: 0; }
 
 /* ============================================================================
    8. Footer
@@ -799,7 +799,7 @@
 
 /* ============================================================================
    DOCUMENTATION LAYOUT
-   Three columns in the shape ethereum.org uses: a navigation rail, a measured
+   Three columns in the shape most protocol docs use: a navigation rail, a measured
    content column, and an on this page rail. Values come from the reference:
    the type scale in notes/DESIGN-SYSTEM.md 2.2, the 4px spacing scale in 3.3,
    the border grammar in 3.5, and the colour tokens in tokens.css. The rail
@@ -1443,18 +1443,18 @@
   background: var(--bg);
 }
 
-/* 3. The deployed ABI beside the functions that are not in it. */
-.abi-cols {
+/* 3. The program's IDL beside the instructions that are not in it. */
+.idl-cols {
   display: grid;
   grid-template-columns: 1fr;
   gap: 24px;
 }
 
 @media (min-width: 680px) {
-  .abi-cols { grid-template-columns: 1fr 1fr; }
+  .idl-cols { grid-template-columns: 1fr 1fr; }
 }
 
-.abi-head {
+.idl-head {
   margin: 0 0 10px;
   font-size: 11px;
   text-transform: uppercase;
@@ -1462,7 +1462,7 @@
   color: var(--faint);
 }
 
-.abi-list {
+.idl-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -1473,7 +1473,7 @@
   border: 1px solid var(--hairline);
 }
 
-.abi-row {
+.idl-row {
   padding: 8px 10px;
   background: var(--surface);
   font-family: var(--font-mono);
@@ -1484,11 +1484,11 @@
   overflow-wrap: anywhere;
 }
 
-.abi-row[data-kind="trust"] { color: var(--state-trust); }
+.idl-row[data-kind="trust"] { color: var(--state-trust); }
 
 /* Struck through rather than greyed out. A dimmed row reads as "less
    important"; a struck one reads as "not there", which is the claim. */
-.abi-row[data-kind="absent"] {
+.idl-row[data-kind="absent"] {
   color: var(--faint);
   text-decoration: line-through;
   text-decoration-color: var(--state-danger);
@@ -1497,7 +1497,7 @@
 
 /* --- hero figure: the lookalike ----------------------------------------------
    The attack drawn rather than described. Brightness carries the meaning: the
-   characters a wallet actually renders are at full text colour, the thirty two
+   characters a wallet actually renders are at full text colour, the thirty five
    it hides are dimmed. Both rows are dimmed in the same place, so what stands
    out is that the bright parts match and the dim parts do not. */
 

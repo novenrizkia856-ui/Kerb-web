@@ -1,8 +1,8 @@
 # Kerb web
 
-Static landing page and a mock application shell for Kerb, a small noncustodial
-protocol. The first transfer to an address you have never sent to is held in a
-short cancellation window. Every transfer to that address afterwards goes
+Static landing page and application shell for Kerb, a small noncustodial
+protocol for Solana. The first transfer to an address you have never sent to is
+held in a short cancellation window. Every transfer to that address afterwards goes
 straight through. An attacker can write fake addresses into your transaction
 history, but cannot write into a list built only from your own completed sends.
 
@@ -21,10 +21,12 @@ There is nothing to install and nothing to compile. Open the printed URL.
 
 ```
 index.html            landing page
-app/index.html        mock app shell, demo data only
+app/index.html        app shell: demo data, or a Solana wallet read only
 config/
   kerb.config.json    every address, link and flag. The only file you edit after deploy
   config.js           render rules, validator, truncation helper
+  solana.js           clusters, RPC and explorer URLs, public key validation
+  idl/kerb.json       the planned program interface, rendered as a landing figure
 assets/
   css/
     tokens.css        every colour, easing curve and duration. :root only
@@ -34,19 +36,27 @@ assets/
   js/
     motion.js         motion ported from the reference: typer, nav morph, ascii rain, observer
     kerb-visuals.js   the waiting window and the history versus list panels
+    kerb-figures.js   the wallet grid and the instruction figure
     app.js            the four state send flow
-    app-mock.js       mock contacts and tokens. The only address literals in the repo
+    app-source.js     the demo source and the read only wallet source
+    app-mock.js       mock contacts and tokens
+    wallet.js         Solana wallet discovery and connection. Never signs
+    wallet-ui.js      connect button, wallet picker, account menu
+    solana-read.js    read only JSON-RPC: SOL and SPL balances
     copy.js           clipboard and the shared announcement region
     main.js           boots both pages
   fonts/              Geist and Geist Mono, self hosted, SIL OFL 1.1
 content/docs/         documentation source in GitBook layout, SUMMARY.md drives the order
 docs/                 the generated documentation site, served at /docs
 tools/build-docs.py   renders content/docs into docs. An authoring tool, not a build step
+tools/solana-env.py   copies NEXT_PUBLIC_* values from the environment or .env into the config
+.env.example          the Solana variables, for use with tools/solana-env.py
 notes/
   DESIGN-SYSTEM.md    what the reference frontend does, extracted value by value
   PALETTE.md          the colour refinement, with every contrast ratio measured
   MOTION-LOG.md       every motion value against its reference value
-  FILL-CONTRACTS.md   how to put the deployed addresses live
+  FILL-CONFIG.md      how to put the Solana values live
+  PRODUCTION-STATUS.md what is ready, what is not, and why
 vercel.json
 ```
 
@@ -75,14 +85,33 @@ that were made and why.
 
 No source project brand name, logo, wordmark, image or copy was carried over.
 
+## Solana
+
+The site targets Solana. A visitor can connect Phantom, Solflare, Backpack or
+any Wallet Standard wallet, see their public key, copy it, open it on Solana
+Explorer, and see their SOL and SPL balances. The app walks a send through to
+review and stops there: the Kerb program is not deployed, so **nothing is ever
+signed or sent**, and no code in the repository builds a transaction. See
+`notes/PRODUCTION-STATUS.md` for exactly what is live and what is not.
+
 ## Filling in the addresses
 
-See `notes/FILL-CONTRACTS.md`. Short version: edit `config/kerb.config.json`,
-commit, push. The `no-cache` header on `/config/*` means the site picks it up
-without a rebuild.
+See `notes/FILL-CONFIG.md`. Short version: edit the `solana` block of
+`config/kerb.config.json`, or fill in `.env` and run `python tools/solana-env.py`,
+then commit and push. The `no-cache` header on `/config/*` means the site picks
+it up without a rebuild.
 
-Until then the token strip reads `Coming Soon` and the contract rows read
-`Not deployed`. Those are the intended empty states, not placeholders.
+| Key | Today |
+|---|---|
+| `SOLANA_NETWORK` | `mainnet-beta` |
+| `SOLANA_RPC_URL` | empty. Set it before launch: the public mainnet endpoint refuses browsers |
+| `EXPLORER_BASE_URL` | `https://explorer.solana.com` |
+| `KERB_TOKEN_MINT` | empty, the strip reads `Coming Soon` |
+| `KERB_PROGRAM_ID` | empty, the Program row reads `Not deployed` |
+| `TREASURY_ADDRESS` | empty |
+
+Those are the intended empty states, not placeholders. Never fill one with a
+stand in key.
 
 ## Deploy
 
@@ -109,15 +138,23 @@ Three scans guard the rules that matter. All three are expected to be silent,
 except for the noted exceptions.
 
 ```bash
-grep -rnP '0x[a-fA-F0-9]{40}' --include='*.html' --include='*.js' --include='*.css' . | grep -v '^./config/'
+grep -rnoP '(?<![A-Za-z0-9])[1-9A-HJ-NP-Za-km-z]{43,44}(?![A-Za-z0-9])' --include='*.html' --include='*.js' --include='*.css' . | grep -v '^./config/'
 ```
 
-Two expected exceptions, nothing else:
+Expected exceptions, nothing else:
 
 - the three seeded mock contacts in `assets/js/app-mock.js`, each commented as mock
 - the truncation illustration in `docs/concepts/address-poisoning` and
   `docs/integration/frontend`, which is inside a code block labelled
   `example address, not a deployment`
+- the public token program, wrapped SOL, USDC and USDT ids in `config/solana.js`,
+  which are excluded by the `config/` filter
+
+```bash
+grep -rniE 'signTransaction|signAllTransactions|signAndSendTransaction|sendTransaction|signMessage' assets config app index.html
+```
+
+Expected: only comments stating that these are never called.
 
 `vercel.json` also ships alongside a `.vercelignore` that keeps `notes/`,
 `content/` and `tools/` out of the deployment. `notes/DESIGN-SYSTEM.md` names
@@ -193,7 +230,7 @@ Chrome, Edge, Firefox and Safari, latest two. iOS Safari 16 and up.
 | `:focus-visible` | Safari 15.4 | Below the floor there is no ring, same as the reference, which defines none at all. |
 
 No JavaScript beyond ES2020 is used: no `structuredClone`, no `Array.at`, no
-logical assignment, no top level await. All seven modules parse clean under
+logical assignment, no top level await. Every module parses clean under
 `node --check`.
 
 ## Honest limits

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>State | Kerb docs</title>
-<meta name="description" content="Four slots per pending hold. The first three fields pack into one slot at 232 bits of 256. recipient and asset each take a slot with 96 bits spare, and amo">
+<meta name="description" content="Every account starts with the 8 byte discriminator Anchor writes, so a program can never mistake one account type for another.">
 <meta property="og:type" content="article">
 <meta property="og:title" content="State | Kerb docs">
-<meta property="og:description" content="Four slots per pending hold. The first three fields pack into one slot at 232 bits of 256. recipient and asset each take a slot with 96 bits spare, and amo">
+<meta property="og:description" content="Every account starts with the 8 byte discriminator Anchor writes, so a program can never mistake one account type for another.">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs/protocol/state">
 <link rel="canonical" href="" data-site-url="/docs/protocol/state">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -130,79 +130,137 @@
             <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Protocol</span><span class="sep">/</span><span>State</span></div>
             <div class="docs-prose">
 <h1 id="state">State</h1>
-<h2 id="storage-layout">Storage layout<a class="headerlink" href="#storage-layout" title="Permanent link">#</a></h2>
-<pre><code class="language-solidity">struct Hold {
-    address sender;      // slot 0, bits 0..159
-    uint64  releaseAt;   // slot 0, bits 160..223
-    uint8   status;      // slot 0, bits 224..231
-    address recipient;   // slot 1, bits 0..159
-    address asset;       // slot 2, bits 0..159
-    uint256 amount;      // slot 3
-}
+<h2 id="account-layouts">Account layouts<a class="headerlink" href="#account-layouts" title="Permanent link">#</a></h2>
+<p>Every account starts with the 8 byte discriminator Anchor writes, so a program
+can never mistake one account type for another.</p>
+<pre><code class="language-rust">#[account]
+pub struct Hold {            // seeds: &quot;hold&quot;, sender, recipient, mint
+    pub sender: Pubkey,      // 32
+    pub recipient: Pubkey,   // 32
+    pub mint: Pubkey,        // 32, all zeros for SOL
+    pub amount: u64,         // 8, what actually arrived in escrow
+    pub release_at: i64,     // 8, unix seconds from the Clock sysvar
+    pub bump: u8,            // 1
+}                            // 8 + 113 = 121 bytes
+
+#[account]
+pub struct Contact {         // seeds: &quot;contact&quot;, sender, recipient
+    pub sender: Pubkey,      // 32
+    pub recipient: Pubkey,   // 32
+    pub since: i64,          // 8, when the settlement that created it landed
+    pub bump: u8,            // 1
+}                            // 8 + 73 = 81 bytes
+
+#[account]
+pub struct Settings {        // seeds: &quot;settings&quot;, sender
+    pub sender: Pubkey,      // 32
+    pub dwell_seconds: u64,  // 8, zero means DEFAULT_DWELL
+    pub bump: u8,            // 1
+}                            // 8 + 41 = 49 bytes
+
+#[account]
+pub struct Claim {           // seeds: &quot;claim&quot;, recipient, mint
+    pub recipient: Pubkey,   // 32
+    pub mint: Pubkey,        // 32
+    pub amount: u64,         // 8
+    pub bump: u8,            // 1
+}                            // 8 + 73 = 81 bytes
 </code></pre>
-<p>Four slots per pending hold. The first three fields pack into one slot at 232
-bits of 256. <code>recipient</code> and <code>asset</code> each take a slot with 96 bits spare, and
-<code>amount</code> takes a full slot.</p>
-<p><code>amount</code> is deliberately left at <code>uint256</code> rather than squeezed into the spare
-96 bits beside <code>recipient</code>. A <code>uint96</code> caps at roughly 7.9e28, which is about 79
-billion units of an 18 decimal token. That is comfortable for most tokens and
-not comfortable for all of them, and a silent overflow on an unusual token is a
-worse outcome than one extra storage slot on a structure that is deleted again
-within minutes.</p>
-<p>Because every hold is deleted on settle or cancel, the refund recovers most of
-the write cost. Steady state storage growth from holds is zero.</p>
-<h2 id="mappings">Mappings<a class="headerlink" href="#mappings" title="Permanent link">#</a></h2>
-<pre><code class="language-solidity">// hold id to hold. Only ever contains pending holds.
-mapping(bytes32 =&gt; Hold) private _holds;
-
-// sender to the recipients they have settled a transfer to.
-mapping(address =&gt; EnumerableSet.AddressSet) private _trusted;
-
-// sender to the ids of their currently pending holds.
-mapping(address =&gt; EnumerableSet.Bytes32Set) private _pending;
-
-// sender to their chosen dwell. Zero means use DEFAULT_DWELL.
-mapping(address =&gt; uint64) private _dwell;
-
-// recipient to asset to an amount owed after a failed push delivery.
-mapping(address =&gt; mapping(address =&gt; uint256)) private _claimable;
-</code></pre>
-<p><code>EnumerableSet</code> is used rather than a bare mapping plus an array because both
-sets need membership tests in the hot path and enumeration in the read path, and
-because removal has to be cheap for <code>forget</code> and for settling a pending hold.</p>
+<p><code>sender</code> sits first after the discriminator in <code>Hold</code>, <code>Contact</code> and <code>Settings</code>,
+at byte offset 8. That is deliberate: it is what lets a client ask an RPC node
+for every account of a type belonging to one sender with a single <code>memcmp</code>
+filter. See <a href="/docs/implementation/lens">Reading state</a>.</p>
+<p><code>amount</code> is a <code>u64</code>, because SPL token amounts and lamports are both <code>u64</code>
+natively. There is no wider amount to accommodate and no narrowing to get wrong.</p>
+<h2 id="rent">Rent<a class="headerlink" href="#rent" title="Permanent link">#</a></h2>
+<p>Every account holds a rent exempt deposit, returned to whoever the program
+names when it is closed.</p>
+<div class="docs-table-wrap"><table>
+<thead>
+<tr>
+<th>Account</th>
+<th>Size</th>
+<th>Deposit</th>
+<th>Paid by</th>
+<th>Returned</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hold</td>
+<td>121 bytes</td>
+<td>0.00173304 SOL</td>
+<td>sender</td>
+<td>to the sender, on cancel or settle</td>
+</tr>
+<tr>
+<td>Vault (SPL only)</td>
+<td>165 bytes, more with Token-2022 extensions</td>
+<td>0.00203928 SOL</td>
+<td>sender</td>
+<td>to the sender, on cancel or settle</td>
+</tr>
+<tr>
+<td>Contact</td>
+<td>81 bytes</td>
+<td>0.00145464 SOL</td>
+<td>the hold's deposit</td>
+<td>to the sender, on forget</td>
+</tr>
+<tr>
+<td>Settings</td>
+<td>49 bytes</td>
+<td>0.00123192 SOL</td>
+<td>sender</td>
+<td>to the sender, when the dwell is cleared</td>
+</tr>
+<tr>
+<td>Claim and its vault</td>
+<td>81 + 165 bytes</td>
+<td>about 0.0035 SOL</td>
+<td>the settler</td>
+<td>to the settler, when the claim is withdrawn</td>
+</tr>
+</tbody>
+</table></div>
+<p>Figures assume the current rent rate of 6,960 lamports per byte, including the
+128 byte account overhead. Because holds close on settle or cancel, steady state
+growth from holds is zero. Contacts persist, which is the point of them.</p>
+<p>The contact's deposit comes out of the hold's, which is larger. So settling
+never asks the settler to fund the sender's list, and the sender's cost for a
+first transfer is one contact deposit, recoverable with <code>forget</code>.</p>
 <h2 id="hold-identity">Hold identity<a class="headerlink" href="#hold-identity" title="Permanent link">#</a></h2>
-<pre><code class="language-solidity">function holdIdOf(address sender, address recipient, address asset)
-    public pure returns (bytes32)
-{
-    return keccak256(abi.encode(sender, recipient, asset));
-}
+<pre><code>hold address = find_program_address([&quot;hold&quot;, sender, recipient, mint], program_id)
 </code></pre>
 <p>Three properties follow from this choice, and all three are intended.</p>
-<p><strong>It is derivable offchain.</strong> A frontend can compute the id for a transfer it is
-about to make, without a transaction and without an event, and watch for it.</p>
-<p><strong>It is stable.</strong> The same triple always produces the same id, so a cancelled
-hold and a later hold between the same parties for the same asset share an id.
-That is safe because a hold is deleted before a new one can be created, and
-<code>HoldPending</code> blocks the overlapping case.</p>
+<p><strong>It is derivable off chain.</strong> A frontend can compute the hold address for a
+transfer it is about to make, without a transaction and without an event, and
+watch it.</p>
+<p><strong>It is stable.</strong> The same triple always produces the same address, so a
+cancelled hold and a later hold between the same parties for the same mint share
+an address. That is safe because the account is closed before a new one can be
+created there, and account creation fails while it is open.</p>
 <p><strong>It is scoped to the sender.</strong> Two senders paying the same recipient the same
-asset have different ids, so nothing about one sender is reachable from another.</p>
-<p>It is not a counter, so there is no global sequence to read and no way to
-enumerate all holds across all senders from storage alone. That enumeration is
-available from the <code>Held</code> event log, which is where it belongs.</p>
+mint have different addresses, so nothing about one sender is reachable from
+another.</p>
+<p>It is not a counter, so there is no global sequence and no global account for
+concurrent sends to contend over. A sender's open holds are enumerated by
+filtering on the sender field, and history comes from transaction logs.</p>
 <h2 id="trust-records">Trust records<a class="headerlink" href="#trust-records" title="Permanent link">#</a></h2>
-<p>The trusted set stores addresses only. It does not currently store when trust
-was granted or on what amount.</p>
-<p><strong>Open question, likely to be adopted.</strong> Store a companion mapping:</p>
-<pre><code class="language-solidity">mapping(address =&gt; mapping(address =&gt; uint256)) private _trustedAmount;
+<p>A contact account records that a settlement happened and when. It does not
+currently record the amount or the mint.</p>
+<p><strong>Open question, likely to be adopted.</strong> Add</p>
+<pre><code class="language-rust">pub settled_mint: Pubkey,    // 32
+pub settled_amount: u64,     // 8
 </code></pre>
-<p>recording the amount of the settling transfer. It costs one slot per trusted
-pair and enables a frontend to show an entry that was trusted on one wei
-differently from one trusted on a real payment. See the dust trust risk in
-<a href="/docs/concepts/trust-list">The trust list</a>. The specification currently omits
-it so that the decision is explicit rather than assumed.</p>
+<p>to <code>Contact</code>, recording the settlement that created it. It costs 40 bytes, about
+0.00028 SOL of extra rent per contact, and lets a frontend show an entry trusted
+on a speck of dust differently from one trusted on a real payment. See the dust
+trust risk in <a href="/docs/concepts/trust-list">The trust list</a>. The specification
+currently omits it so that the decision is explicit rather than assumed.</p>
 <h2 id="invariants">Invariants<a class="headerlink" href="#invariants" title="Permanent link">#</a></h2>
-<p>These must hold after every externally callable function returns. They are the
-basis of the property tests in <a href="/docs/implementation/testing">Testing</a>.</p>
+<p>These must hold after every instruction. They are the basis of the property
+tests in <a href="/docs/implementation/testing">Testing</a>.</p>
 <div class="docs-table-wrap"><table>
 <thead>
 <tr>
@@ -213,31 +271,31 @@ basis of the property tests in <a href="/docs/implementation/testing">Testing</a
 <tbody>
 <tr>
 <td>1</td>
-<td><code>_holds[id].status</code> is either <code>STATUS_NONE</code> or <code>STATUS_PENDING</code>. Settled and cancelled never persist.</td>
+<td>Every open hold account has <code>amount &gt; 0</code>, and <code>release_at</code> no later than creation time plus <code>MAX_DWELL</code>.</td>
 </tr>
 <tr>
 <td>2</td>
-<td><code>id</code> is in <code>_pending[sender]</code> if and only if <code>_holds[id].status == STATUS_PENDING</code> and <code>_holds[id].sender == sender</code>.</td>
+<td>A hold account's address equals the PDA derived from its own <code>sender</code>, <code>recipient</code> and <code>mint</code> fields. The same holds for contact, settings and claim accounts.</td>
 </tr>
 <tr>
 <td>3</td>
-<td>For every asset, the contract balance is at least the sum of all pending hold amounts for that asset plus all claimable balances for that asset.</td>
+<td>For every hold, its escrow holds at least <code>amount</code>: the vault's token balance for an SPL hold, or lamports above the rent deposit for a SOL hold. For every claim, its vault holds at least <code>amount</code>.</td>
 </tr>
 <tr>
 <td>4</td>
-<td>A recipient enters <code>_trusted[sender]</code> only in <code>settle</code>, and leaves only in <code>forget</code>.</td>
+<td>A contact account is created only by <code>settle</code>, and closed only by <code>forget</code>.</td>
 </tr>
 <tr>
 <td>5</td>
-<td><code>_dwell[sender]</code> is either zero, or within <code>[MIN_DWELL, MAX_DWELL]</code>.</td>
+<td>A settings account's <code>dwell_seconds</code> is either zero, or within <code>[MIN_DWELL, MAX_DWELL]</code>.</td>
 </tr>
 <tr>
 <td>6</td>
-<td><code>holdIdOf(sender, recipient, asset)</code> matches <code>_holds[id]</code> fields for every pending id.</td>
+<td>Every vault's token authority is the hold or claim account it belongs to, and nothing else.</td>
 </tr>
 <tr>
 <td>7</td>
-<td>No function lets an account modify another account trusted set, dwell, holds or claimable balance.</td>
+<td>No instruction lets one key modify another key's contacts, settings, holds or claims, except <code>settle</code> completing a hold exactly as it was opened.</td>
 </tr>
 </tbody>
 </table></div>
@@ -253,8 +311,8 @@ basis of the property tests in <a href="/docs/implementation/testing">Testing</a
 
 <aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
 <ul>
-<li><a href="#storage-layout">Storage layout</a></li>
-<li><a href="#mappings">Mappings</a></li>
+<li><a href="#account-layouts">Account layouts</a></li>
+<li><a href="#rent">Rent</a></li>
 <li><a href="#hold-identity">Hold identity</a></li>
 <li><a href="#trust-records">Trust records</a></li>
 <li><a href="#invariants">Invariants</a></li>

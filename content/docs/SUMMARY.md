@@ -20,8 +20,8 @@
 
 ## Implementation
 
-* [KerbCore](implementation/core.md)
-* [KerbLens](implementation/lens.md)
+* [The Kerb program](implementation/core.md)
+* [Reading state](implementation/lens.md)
 * [Assets](implementation/assets.md)
 * [Security](implementation/security.md)
 * [Testing](implementation/testing.md)

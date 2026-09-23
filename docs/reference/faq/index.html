@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FAQ | Kerb docs</title>
-<meta name="description" content="Only during a hold, and only funds you put there yourself. A transfer to an address on your list never touches the contract at all: for an ERC20 it moves d">
+<meta name="description" content="Only during a hold, and only funds you put there yourself. A transfer to an address on your list never touches a Kerb account at all: it moves directly fro">
 <meta property="og:type" content="article">
 <meta property="og:title" content="FAQ | Kerb docs">
-<meta property="og:description" content="Only during a hold, and only funds you put there yourself. A transfer to an address on your list never touches the contract at all: for an ERC20 it moves d">
+<meta property="og:description" content="Only during a hold, and only funds you put there yourself. A transfer to an address on your list never touches a Kerb account at all: it moves directly fro">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs/reference/faq">
 <link rel="canonical" href="" data-site-url="/docs/reference/faq">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -133,16 +133,19 @@
 <h2 id="custody-and-control">Custody and control<a class="headerlink" href="#custody-and-control" title="Permanent link">#</a></h2>
 <h3 id="does-kerb-hold-my-funds">Does Kerb hold my funds?<a class="headerlink" href="#does-kerb-hold-my-funds" title="Permanent link">#</a></h3>
 <p>Only during a hold, and only funds you put there yourself. A transfer to an
-address on your list never touches the contract at all: for an ERC20 it moves
-directly from you to the recipient in a single <code>transferFrom</code>.</p>
-<p>During a hold the contract custodies the amount. There is no owner, no pause and
-no sweep function, so the only two ways value leaves are <code>cancel</code> back to you
-and <code>settle</code> to the recipient.</p>
+address on your list never touches a Kerb account at all: it moves directly from
+your wallet to the recipient in a single transfer.</p>
+<p>During a hold the funds sit in an escrow account owned by the program. There is
+no admin, no pause and no sweep instruction, so the only two ways value leaves
+are <code>cancel</code> back to you and <code>settle</code> to the recipient.</p>
 <h3 id="can-kerb-freeze-my-money">Can Kerb freeze my money?<a class="headerlink" href="#can-kerb-freeze-my-money" title="Permanent link">#</a></h3>
-<p>No. There is no pause, no blocklist and no administrative role of any kind. The
-contract has no function that a third party can call to affect your funds. The
-only party who can stop a hold reaching its recipient is you, with <code>cancel</code>, and
-only before <code>releaseAt</code>.</p>
+<p>Kerb cannot. There is no pause, no blocklist and no administrative role of any
+kind, and the program has no instruction a third party can sign to affect your
+funds. The only party who can stop a hold reaching its recipient is you, with
+<code>cancel</code>, and only before <code>release_at</code>.</p>
+<p>A token's own issuer is a different matter. A mint with a freeze authority can
+freeze any account holding that token, including a Kerb escrow. See
+<a href="/docs/implementation/assets">Assets</a>.</p>
 <h3 id="does-a-stolen-key-mean-kerb-protects-me">Does a stolen key mean Kerb protects me?<a class="headerlink" href="#does-a-stolen-key-mean-kerb-protects-me" title="Permanent link">#</a></h3>
 <p>No. An attacker holding your key holds your authority. They can send, wait out
 the dwell, settle, cancel anything you try to reclaim, set your dwell to the
@@ -150,22 +153,22 @@ minimum, and forget your real contacts. Kerb is not a recovery mechanism and
 must never be described as one. See
 <a href="/docs/concepts/threat-model">Threat model</a>.</p>
 <h3 id="can-somebody-see-who-is-on-my-list">Can somebody see who is on my list?<a class="headerlink" href="#can-somebody-see-who-is-on-my-list" title="Permanent link">#</a></h3>
-<p>Yes. Kerb stores trust lists in public contract storage and emits public events.
+<p>Yes. Every contact is a public account, and every Kerb transaction is public.
 Anyone can read who has trusted whom, in either direction. Kerb provides no
 privacy and nothing in its design should be read as providing any.</p>
 <h2 id="the-mechanism">The mechanism<a class="headerlink" href="#the-mechanism" title="Permanent link">#</a></h2>
 <h3 id="what-if-nobody-calls-settle">What if nobody calls settle?<a class="headerlink" href="#what-if-nobody-calls-settle" title="Permanent link">#</a></h3>
-<p>Anyone can, including the recipient, and the Kerb app does it automatically. A
-hold that nobody settles sits in escrow indefinitely, which is why <code>settle</code> is
+<p>Anyone can, including the recipient, and the Kerb app will do it automatically.
+A hold that nobody settles sits in escrow indefinitely, which is why <code>settle</code> is
 deliberately permissionless rather than restricted to the sender.</p>
 <h3 id="can-i-get-my-money-back-after-the-window-closes">Can I get my money back after the window closes?<a class="headerlink" href="#can-i-get-my-money-back-after-the-window-closes" title="Permanent link">#</a></h3>
-<p>No. The cutoff is hard. After <code>releaseAt</code> the funds belong to the recipient and
+<p>No. The cutoff is hard. After <code>release_at</code> the funds belong to the recipient and
 the only available action is <code>settle</code>. A soft cutoff was considered and rejected
 because it would mean a recipient never reaches certainty. See
 <a href="/docs/concepts/dwell-window">The dwell window</a>.</p>
 <h3 id="why-not-just-check-the-address-more-carefully">Why not just check the address more carefully?<a class="headerlink" href="#why-not-just-check-the-address-more-carefully" title="Permanent link">#</a></h3>
 <p>Because the attack is built specifically to defeat that check. A poisoned
-address is generated to match the characters your interface shows you. Checking
+address is generated to match the characters your wallet shows you. Checking
 harder means checking more characters, and the attack moves to whichever
 characters the new interface displays. Kerb avoids the comparison entirely.</p>
 <h3 id="why-can-i-not-just-add-an-address-to-my-list-directly">Why can I not just add an address to my list directly?<a class="headerlink" href="#why-can-i-not-just-add-an-address-to-my-list-directly" title="Permanent link">#</a></h3>
@@ -176,36 +179,45 @@ paste an address into a send field can get you to paste it into a trust field
 just as easily. See <a href="/docs/concepts/the-asymmetry">The asymmetry</a>.</p>
 <h2 id="cost">Cost<a class="headerlink" href="#cost" title="Permanent link">#</a></h2>
 <h3 id="is-there-a-token">Is there a token?<a class="headerlink" href="#is-there-a-token" title="Permanent link">#</a></h3>
-<p>No. There is no Kerb token, no airdrop, no points, no supply and no presale. The
-site shows a token contract address field reading <code>Coming Soon</code>, which is a
-placeholder in the interface and not a commitment that one will exist.</p>
+<p>Not today. There is no Kerb token, no airdrop, no points and no presale, and the
+protocol does not need one to work. The site shows a token mint field reading
+<code>Coming Soon</code>, which is a slot in the interface and not a commitment that a
+token will exist.</p>
 <h3 id="is-there-a-fee">Is there a fee?<a class="headerlink" href="#is-there-a-fee" title="Permanent link">#</a></h3>
 <p>No. Not at the protocol level, not to a deployer, not on settle, not on cancel.
-There is no fee recipient address in the contract, so there is no field anyone
-could set one into.</p>
+There is no fee recipient field in the program, so there is nothing anyone could
+set one into.</p>
 <h3 id="what-does-it-cost-to-use">What does it cost to use?<a class="headerlink" href="#what-does-it-cost-to-use" title="Permanent link">#</a></h3>
-<p>Gas, to the network. A straight through transfer should cost close to a bare
-transfer plus one storage read. A held transfer costs the escrow write, and the
-later settle recovers much of that through the storage refund when the hold is
-deleted.</p>
+<p>Solana's transaction fee, to the network, plus refundable rent deposits. A
+straight through transfer costs about what a plain transfer does. A held
+transfer also deposits rent for the hold, and the vault for a token, and all of
+it comes back when the hold closes. The first settlement to a new address keeps
+one small deposit in your contact account, which <code>forget</code> returns. See
+<a href="/docs/protocol/state">State</a> for the amounts.</p>
 <h2 id="tokens">Tokens<a class="headerlink" href="#tokens" title="Permanent link">#</a></h2>
-<h3 id="what-happens-with-a-fee-on-transfer-token">What happens with a fee on transfer token?<a class="headerlink" href="#what-happens-with-a-fee-on-transfer-token" title="Permanent link">#</a></h3>
-<p>The amount recorded is what actually arrived, not what was requested, so a
-cancelled hold returns the reduced amount. The difference was taken by the token
-on the way in and Kerb never had it. See <a href="/docs/implementation/assets">Assets</a>.</p>
-<h3 id="what-about-rebasing-tokens">What about rebasing tokens?<a class="headerlink" href="#what-about-rebasing-tokens" title="Permanent link">#</a></h3>
-<p>Do not use them with Kerb. Amounts are stored absolutely rather than as shares,
-so a rebase drifts the hold away from the contract balance in either direction.
-This is a documented limitation, not a bug to be worked around later.</p>
+<h3 id="what-happens-with-a-token-that-charges-a-transfer-fee">What happens with a token that charges a transfer fee?<a class="headerlink" href="#what-happens-with-a-token-that-charges-a-transfer-fee" title="Permanent link">#</a></h3>
+<p>The amount recorded is what actually arrived in escrow, not what was requested.
+The fee is taken again on the way out, so a cancelled hold returns less than was
+sent. The difference was withheld by the token and Kerb never had it. See
+<a href="/docs/implementation/assets">Assets</a>.</p>
+<h3 id="which-tokens-will-kerb-refuse-to-hold">Which tokens will Kerb refuse to hold?<a class="headerlink" href="#which-tokens-will-kerb-refuse-to-hold" title="Permanent link">#</a></h3>
+<p>Token-2022 mints with a transfer hook, a permanent delegate, or confidential
+transfers. Each of them can move or block the escrowed tokens in ways Kerb
+cannot account for. You can still send them straight through to an address
+already on your list.</p>
 <h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">#</a></h2>
 <h3 id="can-i-use-kerb-for-large-amounts">Can I use Kerb for large amounts?<a class="headerlink" href="#can-i-use-kerb-for-large-amounts" title="Permanent link">#</a></h3>
-<p>The contracts are not audited and not deployed. Until they are, the answer is
-no, and this page should not be read as encouragement. When they are deployed
-the answer is still your own judgement, informed by whoever audited them.</p>
-<h3 id="what-chain-does-this-run-on">What chain does this run on?<a class="headerlink" href="#what-chain-does-this-run-on" title="Permanent link">#</a></h3>
-<p>Robinhood Chain, chain id 4663. Addresses are published in
+<p>The program is not written, not audited and not deployed. Until it is, the
+answer is no, and this page should not be read as encouragement. When it is
+deployed the answer is still your own judgement, informed by whoever audited it.</p>
+<h3 id="what-does-the-app-do-right-now">What does the app do right now?<a class="headerlink" href="#what-does-the-app-do-right-now" title="Permanent link">#</a></h3>
+<p>It connects a Solana wallet, reads your SOL and token balances, and walks you
+through a send up to the review. It does not ask your wallet to sign anything,
+and nothing is sent, because there is no program to send to yet.</p>
+<h3 id="what-network-does-this-run-on">What network does this run on?<a class="headerlink" href="#what-network-does-this-run-on" title="Permanent link">#</a></h3>
+<p>Solana, <code>mainnet-beta</code> at launch. The program id will be published in
 <code>config/kerb.config.json</code> in the web repository once deployment happens, and the
-site reads them from there with no rebuild.</p>
+site reads it from there with no rebuild.</p>
 <h3 id="is-it-audited">Is it audited?<a class="headerlink" href="#is-it-audited" title="Permanent link">#</a></h3>
 <p>No. Nothing in this specification has been audited, and there is no
 implementation to audit yet. When there is one, the
@@ -244,13 +256,14 @@ found.</p>
 </ul>
 </li>
 <li><a href="#tokens">Tokens</a><ul>
-<li><a href="#what-happens-with-a-fee-on-transfer-token">What happens with a fee on transfer token?</a></li>
-<li><a href="#what-about-rebasing-tokens">What about rebasing tokens?</a></li>
+<li><a href="#what-happens-with-a-token-that-charges-a-transfer-fee">What happens with a token that charges a transfer fee?</a></li>
+<li><a href="#which-tokens-will-kerb-refuse-to-hold">Which tokens will Kerb refuse to hold?</a></li>
 </ul>
 </li>
 <li><a href="#status">Status</a><ul>
 <li><a href="#can-i-use-kerb-for-large-amounts">Can I use Kerb for large amounts?</a></li>
-<li><a href="#what-chain-does-this-run-on">What chain does this run on?</a></li>
+<li><a href="#what-does-the-app-do-right-now">What does the app do right now?</a></li>
+<li><a href="#what-network-does-this-run-on">What network does this run on?</a></li>
 <li><a href="#is-it-audited">Is it audited?</a></li>
 </ul>
 </li>

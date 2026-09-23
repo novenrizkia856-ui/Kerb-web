@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -135,7 +135,7 @@ than one that does nothing. Everything below is a real limitation of the design
 as specified. None of it is softened, and none of it is scheduled to be fixed by
 a future version that will quietly appear later.</p>
 <h2 id="you-can-send-around-it">You can send around it<a class="headerlink" href="#you-can-send-around-it" title="Permanent link">#</a></h2>
-<p>Kerb is a contract you choose to call. A plain transfer from your wallet to any
+<p>Kerb is a program you choose to call. A plain transfer from your wallet to any
 address never touches it and is always available. Nothing about Kerb constrains
 your account, because nothing about Kerb has any authority over your account.</p>
 <p>It is a speed bump you opt into. If you paste a poisoned address into your
@@ -149,16 +149,17 @@ real contacts.</p>
 <p>Kerb is not a recovery mechanism, not a social recovery scheme and not a
 guardian system. If your key is gone, Kerb offers nothing.</p>
 <h2 id="not-audited">Not audited<a class="headerlink" href="#not-audited" title="Permanent link">#</a></h2>
-<p>There is no audit. There is also, as of this writing, no implementation. These
-documents are a specification that the Solidity work will be built against.</p>
+<p>There is no audit. There is also, as of this writing, no implementation and no
+deployed program. These documents are a specification that the Solana program
+will be built against, and the web app runs without sending anything.</p>
 <p>When an implementation exists and somebody audits it, this section will name the
 auditor, the version reviewed and the findings. Until this page says otherwise,
 assume the only people who have checked this design are the people who wrote it.</p>
 <p><strong>Read the source before you trust it with anything.</strong> That instruction is not a
 formality.</p>
 <h2 id="dust-can-trust-an-address">Dust can trust an address<a class="headerlink" href="#dust-can-trust-an-address" title="Permanent link">#</a></h2>
-<p>The trust list records that a transfer settled, not how large it was. A transfer
-of one wei that settles trusts a recipient exactly as firmly as a large one.</p>
+<p>The trust list records that a transfer settled, not how large it was. A tiny
+transfer that settles trusts a recipient exactly as firmly as a large one.</p>
 <p>A malicious application that gets you to sign a tiny Kerb send to an address it
 controls, and that you do not cancel within the window, has permanently put that
 address on your list. Your next real transfer to it will not wait.</p>
@@ -172,27 +173,29 @@ before. It is not a judgement about whoever controls that address, and it does
 not expire. If a counterparty becomes an adversary, Kerb will not slow you down.
 <code>forget</code> is the remedy and it is entirely manual.</p>
 <h2 id="no-privacy">No privacy<a class="headerlink" href="#no-privacy" title="Permanent link">#</a></h2>
-<p>Trust lists live in public contract storage and every state change emits a
-public event. Anyone can read who has trusted whom, in both directions, for
-every address that has ever used Kerb.</p>
+<p>Trust lists are public accounts and every state change is a public transaction.
+Anyone can read who has trusted whom, in both directions, for every address that
+has ever used Kerb.</p>
 <p>Kerb makes no privacy claim of any kind.</p>
 <h2 id="some-tokens-do-not-work">Some tokens do not work<a class="headerlink" href="#some-tokens-do-not-work" title="Permanent link">#</a></h2>
-<p><strong>Rebasing tokens are not supported.</strong> Amounts are stored absolutely rather than
-as shares, so a rebase moves the contract balance away from what the hold
-records, in whichever direction the rebase went.</p>
-<p><strong>A token with a recipient blocklist can strand a hold.</strong> If the token refuses
-to move to the recipient at settlement time, <code>settle</code> reverts. The window has
-closed so <code>cancel</code> is illegal. The hold stays pending until the block is lifted,
-possibly forever. This is a genuine trap with no clean answer currently
-specified. See <a href="/docs/implementation/assets">Assets</a>.</p>
+<p><strong>Some Token-2022 mints are refused.</strong> A mint with a transfer hook, a permanent
+delegate or confidential transfers cannot be held, because each can move or
+block the escrowed tokens behind Kerb's back. They can still go straight through
+to an address already on your list.</p>
+<p><strong>A token whose issuer can freeze accounts can strand a hold.</strong> Many mints keep
+a freeze authority, stablecoins among them. If the issuer freezes a hold's
+escrow account, neither <code>cancel</code> nor <code>settle</code> can move the tokens. The hold
+stays open until the issuer thaws it, possibly forever. This is a genuine trap
+with no clean answer currently specified. See
+<a href="/docs/implementation/assets">Assets</a>.</p>
 <h2 id="it-cannot-be-fixed-after-deployment">It cannot be fixed after deployment<a class="headerlink" href="#it-cannot-be-fixed-after-deployment" title="Permanent link">#</a></h2>
-<p><code>KerbCore</code> has no upgrade path, no proxy and no admin. That is the point, and it
-cuts both ways: a bug discovered after deployment cannot be patched. The only
-response is for everybody to move to a new deployment and rebuild their trust
-lists through fresh settled transfers.</p>
+<p>The Kerb program's upgrade authority is revoked at deploy, and it has no admin.
+That is the point, and it cuts both ways: a bug discovered after deployment
+cannot be patched. The only response is for everybody to move to a new
+deployment and rebuild their trust lists through fresh settled transfers.</p>
 <p>That is why the <a href="/docs/implementation/testing">Testing</a> plan is specified as
 tightly as it is, and why an audit matters more here than it would for an
-upgradeable contract.</p>
+upgradeable program.</p>
 <h2 id="it-slows-down-your-first-transfer">It slows down your first transfer<a class="headerlink" href="#it-slows-down-your-first-transfer" title="Permanent link">#</a></h2>
 <p>Every genuinely new recipient costs you one dwell window, fifteen minutes by
 default. That is the product, not a defect, but it is a cost and it should be

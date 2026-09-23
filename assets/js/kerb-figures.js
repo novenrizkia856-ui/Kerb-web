@@ -10,14 +10,15 @@
               reader can check it rather than take it
      paths    the two routes a send takes, as the rows the app itself renders,
               with real truncated addresses and the same state tags
-     abi      the deployed contract's own function list, read out of the ABI
-              artifact, beside the privileged functions that are not in it
+     idl      the Kerb program's instruction list, read out of its IDL, beside
+              the privileged instructions that are not in it
 
    The third one is the one that had to be generated rather than written. A
-   hand typed list of "functions Kerb does not have" is a claim about a
-   contract; a list filtered against the real ABI is a reading of it. If
-   somebody ever added `pause()`, the figure would stop asserting it was
-   absent. */
+   hand typed list of "instructions Kerb does not have" is a claim about a
+   program; a list filtered against the IDL is a reading of it. If somebody
+   ever added `pause`, the figure would stop asserting it was absent. The
+   program is not deployed yet, so the IDL is the planned interface, and the
+   caption says so. */
 
 import { prefersReducedMotion } from './motion.js';
 
@@ -53,31 +54,36 @@ function mountWalletGrid(figure) {
   );
 }
 
-/* --- 2. the ABI figure -------------------------------------------------------
-   The privileged functions a contract like this would have if it had an owner.
-   Each is checked against the real ABI before it is shown as absent. */
+/* --- 2. the instruction figure ------------------------------------------------
+   The privileged instructions a program like this would have if it had an
+   admin. Each is checked against the IDL before it is shown as absent. */
 
 const PRIVILEGED = [
-  'owner()',
-  'transferOwnership(address)',
+  'set_admin(new_admin: Pubkey)',
   'pause()',
-  'upgradeTo(address)',
-  'setFee(uint256)',
-  'sweep(address)',
+  'set_upgrade_authority(new: Pubkey)',
+  'set_fee(bps: u16)',
+  'sweep(vault: Pubkey)',
+  'freeze(user: Pubkey)',
 ];
 
-/* The ones worth showing as present. The full surface is twenty odd entries
-   and a wall of signatures is not a figure, it is a data dump. These are the
-   five a reader would want to check for. */
-const HIGHLIGHT = ['send', 'cancel', 'settle', 'trust', 'untrust'];
+/* The ones worth showing as present. A wall of signatures is not a figure, it
+   is a data dump. These are the five a reader would want to check for. */
+const HIGHLIGHT = ['send', 'cancel', 'settle', 'forget', 'set_dwell'];
 
-function signature(entry) {
-  return `${entry.name}(${entry.inputs.map((i) => i.type).join(',')})`;
+function typeName(type) {
+  if (typeof type === 'string') return type;
+  if (Array.isArray(type?.array)) return `[${typeName(type.array[0])}; ${type.array[1]}]`;
+  return 'bytes';
 }
 
-function abiRow(text, kind) {
+function signature(entry) {
+  return `${entry.name}(${entry.args.map((a) => `${a.name}: ${typeName(a.type)}`).join(', ')})`;
+}
+
+function idlRow(text, kind) {
   const li = document.createElement('li');
-  li.className = 'abi-row';
+  li.className = 'idl-row';
   if (kind) li.dataset.kind = kind;
 
   const code = document.createElement('code');
@@ -86,51 +92,51 @@ function abiRow(text, kind) {
   return li;
 }
 
-async function mountAbiFigure(figure) {
-  const presentHost = figure.querySelector('[data-abi-present]');
-  const absentHost = figure.querySelector('[data-abi-absent]');
+async function mountIdlFigure(figure) {
+  const presentHost = figure.querySelector('[data-idl-present]');
+  const absentHost = figure.querySelector('[data-idl-absent]');
   if (!presentHost || !absentHost || presentHost.childElementCount) return;
 
-  let abi = null;
+  let idl = null;
   try {
-    const url = new URL('../../config/abi/KerbCore.json', import.meta.url);
+    const url = new URL('../../config/idl/kerb.json', import.meta.url);
     const response = await fetch(url, { cache: 'no-cache' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    abi = await response.json();
+    idl = await response.json();
   } catch (error) {
     /* The section reads fine without the figure, so a failed fetch removes it
        rather than leaving two empty columns and a caption claiming to have
        read something. */
-    console.warn('[kerb.figures] could not read the ABI:', error);
+    console.warn('[kerb.figures] could not read the IDL:', error);
     figure.remove();
     return;
   }
 
-  const functions = abi.filter((e) => e.type === 'function');
+  const functions = Array.isArray(idl?.instructions) ? idl.instructions : [];
   const names = new Set(functions.map((e) => e.name.toLowerCase()));
 
   for (const name of HIGHLIGHT) {
     const entry = functions.find((e) => e.name === name);
-    if (entry) presentHost.append(abiRow(signature(entry), 'trust'));
+    if (entry) presentHost.append(idlRow(signature(entry), 'trust'));
   }
 
-  /* Only claim a function is missing after checking. The figure is an
-     assertion about the deployed contract and it should be able to fail. */
+  /* Only claim an instruction is missing after checking. The figure is an
+     assertion about the program's interface and it should be able to fail. */
   let shown = 0;
   for (const candidate of PRIVILEGED) {
     const bare = candidate.slice(0, candidate.indexOf('(')).toLowerCase();
     if (names.has(bare)) continue;
-    absentHost.append(abiRow(candidate, 'absent'));
+    absentHost.append(idlRow(candidate, 'absent'));
     shown += 1;
   }
 
   if (!shown) {
-    console.warn('[kerb.figures] every privileged function was present in the ABI');
+    console.warn('[kerb.figures] every privileged instruction was present in the IDL');
     figure.remove();
     return;
   }
 
-  const count = figure.querySelector('[data-abi-count]');
+  const count = figure.querySelector('[data-idl-count]');
   if (count) count.textContent = String(functions.length);
 }
 
@@ -140,8 +146,8 @@ export function initFigures(scope = document) {
   for (const figure of scope.querySelectorAll('[data-fig="wallets"]')) {
     mountWalletGrid(figure);
   }
-  for (const figure of scope.querySelectorAll('[data-fig="abi"]')) {
-    mountAbiFigure(figure);
+  for (const figure of scope.querySelectorAll('[data-fig="idl"]')) {
+    mountIdlFigure(figure);
   }
 
   /* The paths figure is static HTML. Nothing here builds it, because nothing

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Parameters | Kerb docs</title>
-<meta name="description" content="These are compiled into KerbCore as constant and cannot be changed by anybody, including whoever deploys it. There is no setter, no governance and no upgra">
+<meta name="description" content="These are compiled into the Kerb program as const and cannot be changed by anybody once the program&#x27;s upgrade authority is revoked, including whoever deplo">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Parameters | Kerb docs">
-<meta property="og:description" content="These are compiled into KerbCore as constant and cannot be changed by anybody, including whoever deploys it. There is no setter, no governance and no upgra">
+<meta property="og:description" content="These are compiled into the Kerb program as const and cannot be changed by anybody once the program&#x27;s upgrade authority is revoked, including whoever deplo">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs/protocol/parameters">
 <link rel="canonical" href="" data-site-url="/docs/protocol/parameters">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -131,12 +131,13 @@
             <div class="docs-prose">
 <h1 id="parameters">Parameters</h1>
 <h2 id="constants">Constants<a class="headerlink" href="#constants" title="Permanent link">#</a></h2>
-<p>These are compiled into <code>KerbCore</code> as <code>constant</code> and cannot be changed by
-anybody, including whoever deploys it. There is no setter, no governance and no
-upgrade path that could introduce one.</p>
-<pre><code class="language-solidity">uint64 public constant DEFAULT_DWELL = 900;      // 15 minutes
-uint64 public constant MIN_DWELL     = 60;       // 1 minute
-uint64 public constant MAX_DWELL     = 604800;   // 7 days
+<p>These are compiled into the Kerb program as <code>const</code> and cannot be changed by
+anybody once the program's upgrade authority is revoked, including whoever
+deployed it. There is no setter, no governance and no config account that could
+introduce one.</p>
+<pre><code class="language-rust">pub const DEFAULT_DWELL: u64 = 900;      // 15 minutes
+pub const MIN_DWELL: u64 = 60;           // 1 minute
+pub const MAX_DWELL: u64 = 604_800;      // 7 days
 </code></pre>
 <div class="docs-table-wrap"><table>
 <thead>
@@ -165,42 +166,52 @@ uint64 public constant MAX_DWELL     = 604800;   // 7 days
 </tbody>
 </table></div>
 <p>The same three values appear in the web configuration under <code>defaults</code>, where
-they are used for display and validation only. The contract is authoritative.</p>
+they are used for display and validation only. The program is authoritative.</p>
 <h2 id="per-sender-dwell">Per sender dwell<a class="headerlink" href="#per-sender-dwell" title="Permanent link">#</a></h2>
-<pre><code class="language-solidity">function setDwell(uint64 seconds_) external;
-function dwellOf(address sender) public view returns (uint64);
+<pre><code class="language-rust">pub fn set_dwell(ctx: Context&lt;SetDwell&gt;, dwell_seconds: u64) -&gt; Result&lt;()&gt;;
 </code></pre>
-<p><code>setDwell</code> writes <code>_dwell[msg.sender]</code>. It reverts with <code>DwellOutOfRange</code> unless
-<code>MIN_DWELL &lt;= seconds_ &lt;= MAX_DWELL</code>, or <code>seconds_ == 0</code>.</p>
+<p><code>set_dwell</code> writes the signer's settings account, creating it on first use. It
+fails with <code>DwellOutOfRange</code> unless <code>MIN_DWELL &lt;= dwell_seconds &lt;= MAX_DWELL</code>,
+or <code>dwell_seconds == 0</code>.</p>
 <p>Passing zero clears the override and returns the sender to the protocol default.
-<code>dwellOf</code> resolves it:</p>
-<pre><code class="language-solidity">function dwellOf(address sender) public view returns (uint64) {
-    uint64 d = _dwell[sender];
-    return d == 0 ? DEFAULT_DWELL : d;
+The settings account is closed in that case and its rent returned, since an
+absent account and a zero override mean the same thing. The effective dwell is
+resolved like this, on chain and off:</p>
+<pre><code class="language-rust">fn dwell_of(settings: Option&lt;&amp;Settings&gt;) -&gt; u64 {
+    match settings {
+        Some(s) if s.dwell_seconds != 0 =&gt; s.dwell_seconds,
+        _ =&gt; DEFAULT_DWELL,
+    }
 }
 </code></pre>
-<p>Emits <code>DwellSet(sender, seconds_)</code>.</p>
+<p>Emits <code>DwellSet { sender, dwell_seconds }</code>.</p>
 <h2 id="when-the-dwell-is-read">When the dwell is read<a class="headerlink" href="#when-the-dwell-is-read" title="Permanent link">#</a></h2>
 <p>The dwell is read <strong>once</strong>, at the moment a hold is created, and baked into
-<code>releaseAt</code>. Changing your dwell afterwards does not move any hold that is
+<code>release_at</code>. Changing your dwell afterwards does not move any hold that is
 already pending.</p>
 <p>This matters. If the dwell were read at settle time instead, a sender could
 extend a hold indefinitely to keep a recipient waiting, which turns a protection
 into a griefing tool. Reading it once at creation means the recipient knows the
 release time from the moment the hold appears and it cannot move.</p>
-<pre><code>send()      dwellOf(sender) is read here, releaseAt is fixed
+<pre><code>send        dwell_of(sender) is read here, release_at is fixed
    |
-setDwell()  no effect on the hold above
+set_dwell   no effect on the hold above
    |
-settle()    uses the releaseAt stored earlier
+settle      uses the release_at stored earlier
 </code></pre>
 <h2 id="asset-parameters">Asset parameters<a class="headerlink" href="#asset-parameters" title="Permanent link">#</a></h2>
-<p>There are none. Kerb has no per asset configuration: no allowlist, no
-blocklist, no decimals table, no minimum amount, no maximum amount. Any address
-that behaves like an ERC20 can be sent, and the native asset is addressed as
-<code>address(0)</code>.</p>
-<p>A per asset minimum was considered as a mitigation for the dust trust risk and
-rejected. Setting a minimum requires knowing what a given token is worth, which
+<p>Almost none. Kerb has no per mint configuration: no allowlist, no blocklist, no
+decimals table, no maximum amount. Any mint owned by the SPL Token program or
+the Token-2022 program can be sent, subject to the extension rules in
+<a href="/docs/implementation/assets">Assets</a>, and SOL is addressed with the all zero
+key.</p>
+<p>There is exactly one minimum, and it is not a price. A SOL hold must be at least
+the rent exempt minimum for an empty account, 890,880 lamports, because a
+smaller amount can fail to land in a recipient account that holds nothing yet,
+and a settlement that cannot land would strand the hold. The runtime sets that
+number, not Kerb.</p>
+<p>A value based minimum was considered as a mitigation for the dust trust risk and
+rejected. Setting one requires knowing what a given token is worth, which
 requires a price feed, which requires an oracle. Kerb does not have one and
 adding one would introduce exactly the kind of trusted external dependency the
 protocol is built to avoid.</p>
@@ -211,9 +222,12 @@ deployer fee ......... 0
 settle fee ........... 0
 cancel fee ........... 0
 </code></pre>
-<p>There is no fee recipient address in the contract. Users pay gas to the network
-and nothing to Kerb. The absence is structural: there is no field to set a fee
-into and no function that could set one.</p>
+<p>There is no fee recipient field in the program. Users pay Solana's transaction
+fee to the network, optionally a priority fee, and refundable rent deposits for
+the accounts they create. Nothing goes to Kerb. The absence is structural: there
+is no field to set a fee into and no instruction that could set one. A
+<code>TREASURY_ADDRESS</code> exists in the web configuration for the site's own use; the
+program has no knowledge of it.</p>
 <h2 id="summary-of-what-can-change-after-deployment">Summary of what can change after deployment<a class="headerlink" href="#summary-of-what-can-change-after-deployment" title="Permanent link">#</a></h2>
 <div class="docs-table-wrap"><table>
 <thead>
@@ -227,7 +241,7 @@ into and no function that could set one.</p>
 <tr>
 <td>Your dwell</td>
 <td>you</td>
-<td><code>setDwell</code>, within the fixed bounds</td>
+<td><code>set_dwell</code>, within the fixed bounds</td>
 </tr>
 <tr>
 <td>Your trust list</td>
@@ -250,9 +264,9 @@ into and no function that could set one.</p>
 <td>there are none to change</td>
 </tr>
 <tr>
-<td>Contract logic</td>
+<td>Program logic</td>
 <td>nobody</td>
-<td>there is no upgrade path</td>
+<td>the upgrade authority is revoked at deploy</td>
 </tr>
 </tbody>
 </table></div>

@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -132,39 +132,43 @@
 <h1 id="the-trust-list">The trust list</h1>
 <p>Each sender has a list of recipient addresses. The list is per sender: your list
 and mine are unrelated, and no address is globally trusted or globally suspect.</p>
+<p>On Solana the list is a set of small accounts, one <strong>contact</strong> account per
+sender and recipient pair, at an address derived from both keys. An address is
+on your list exactly when its contact account exists.</p>
 <h2 id="the-only-way-in">The only way in<a class="headerlink" href="#the-only-way-in" title="Permanent link">#</a></h2>
 <p>An address is appended to your list when a hold you created <strong>settles</strong>. That is
 the sole write path. Specifically:</p>
 <ul>
 <li>Not when you create a hold. A hold that is cancelled leaves no trace.</li>
 <li>Not when you receive from an address. Inbound transfers never touch your list.</li>
-<li>Not by any call another account can make.</li>
+<li>Not by any instruction another account can sign.</li>
 <li>Not by an administrator, because there is no administrative role.</li>
-<li>Not by a direct trust function, because there is not one. See
+<li>Not by a direct trust instruction, because there is not one. See
   <a href="/docs/concepts/the-asymmetry">The asymmetry</a> for why that omission is deliberate.</li>
 </ul>
 <h2 id="the-only-way-out">The only way out<a class="headerlink" href="#the-only-way-out" title="Permanent link">#</a></h2>
-<p><code>forget(recipient)</code> removes an address from your list. It is callable only by
-you, for your own list.</p>
+<p><code>forget</code> removes an address from your list by closing its contact account. It
+must be signed by you, and it only reaches your own list, because the contact
+account's address is derived from your key.</p>
 <p>Removal is safe to expose in a way that addition is not. Adding an address
 removes friction and so can be weaponised. Removing an address adds friction
-back, so the worst an attacker could achieve by tricking you into calling it is
+back, so the worst an attacker could achieve by tricking you into signing it is
 to make your next transfer to that address wait fifteen minutes.</p>
 <p>After <code>forget</code>, the address is new again. The next transfer to it opens a fresh
-hold.</p>
-<h2 id="trust-is-per-address-not-per-asset">Trust is per address, not per asset<a class="headerlink" href="#trust-is-per-address-not-per-asset" title="Permanent link">#</a></h2>
-<p>The list stores recipients, not recipient and asset pairs. If you have settled a
-transfer of the native asset to an address, a later transfer of an ERC20 to the
-same address goes straight through.</p>
+hold. Closing the contact account returns its rent deposit to you.</p>
+<h2 id="trust-is-per-address-not-per-token">Trust is per address, not per token<a class="headerlink" href="#trust-is-per-address-not-per-token" title="Permanent link">#</a></h2>
+<p>The list stores recipients, not recipient and mint pairs. If you have settled a
+transfer of SOL to an address, a later transfer of an SPL token to the same
+address goes straight through.</p>
 <p>This is intentional. The thing you are being protected from is sending to the
 <strong>wrong address</strong>. Once you have demonstrated, with a completed transfer, that
-this address is one you meant, repeating that demonstration per asset adds
+this address is one you meant, repeating that demonstration per token adds
 friction without adding information.</p>
 <h2 id="the-dust-trust-risk">The dust trust risk<a class="headerlink" href="#the-dust-trust-risk" title="Permanent link">#</a></h2>
 <p>There is a real weakness here and it should be stated plainly.</p>
 <p>The list records that a transfer settled. It does not record how much. A
-transfer of one wei that settles trusts the recipient exactly as firmly as a
-transfer of a thousand ether.</p>
+transfer of the smallest amount the program accepts that settles trusts the
+recipient exactly as firmly as a transfer of a thousand SOL.</p>
 <p>That means a malicious application which can get you to sign one tiny Kerb send
 to an attacker controlled address, and then wait out the dwell without you
 cancelling, has permanently placed that address on your list. Your next real
@@ -173,21 +177,22 @@ transfer to it will not wait.</p>
 <ol>
 <li><strong>The dwell still applies to the dust transfer.</strong> The attacker has to get you
    to sign, and then get you not to notice for fifteen minutes. The window works
-   the same way for a one wei send as for a large one.</li>
+   the same way for a tiny send as for a large one.</li>
 <li><strong><code>forget</code> exists.</strong> The damage is reversible the moment it is noticed.</li>
 <li><strong>Frontends should show the list.</strong> An address list you never look at is an
    address list you cannot audit. The Kerb app shows it by default.</li>
 </ol>
-<p><strong>Open question.</strong> Whether to record the settled amount alongside the entry, so
-a frontend can show "trusted on the strength of 0.000000000000000001 ETH" and
-let the user judge. This costs one storage slot per entry and adds no protocol
-complexity. It is likely worth doing. Not yet specified.</p>
+<p><strong>Open question.</strong> Whether to record the settled amount and mint on the contact
+account, so a frontend can show "trusted on the strength of 0.000001 SOL" and let
+the user judge. It adds 40 bytes to an account that already exists and no
+protocol complexity. It is likely worth doing. Not yet specified.</p>
 <h2 id="growth">Growth<a class="headerlink" href="#growth" title="Permanent link">#</a></h2>
-<p>The list grows by one entry per distinct recipient you ever settle to, and
-shrinks only when you call <code>forget</code>. It is unbounded in principle. In practice it
-is bounded by how many counterparties a person has, which is small.</p>
-<p>Enumeration is provided by <a href="/docs/implementation/lens">KerbLens</a> with offset and
-limit paging so that a large list never makes a read revert.</p>
+<p>The list grows by one contact account per distinct recipient you ever settle to,
+and shrinks only when you call <code>forget</code>. Each account carries a small, refundable
+rent deposit. It is unbounded in principle. In practice it is bounded by how many
+counterparties a person has, which is small.</p>
+<p>Enumeration happens off chain, by asking an RPC node for every contact account
+whose sender field is yours. See <a href="/docs/implementation/lens">Reading state</a>.</p>
 <p>Next: <a href="/docs/concepts/threat-model">Threat model</a>.</p>
             </div>
 <nav class="docs-pager" aria-label="Page">
@@ -201,7 +206,7 @@ limit paging so that a large list never makes a read revert.</p>
 <ul>
 <li><a href="#the-only-way-in">The only way in</a></li>
 <li><a href="#the-only-way-out">The only way out</a></li>
-<li><a href="#trust-is-per-address-not-per-asset">Trust is per address, not per asset</a></li>
+<li><a href="#trust-is-per-address-not-per-token">Trust is per address, not per token</a></li>
 <li><a href="#the-dust-trust-risk">The dust trust risk</a></li>
 <li><a href="#growth">Growth</a></li>
 </ul>

@@ -15,7 +15,7 @@ import { initKerbVisuals } from './kerb-visuals.js';
 import { initFigures } from './kerb-figures.js';
 import { initApp } from './app.js';
 import { initWallet } from './wallet-ui.js';
-import { isOnKerbChain, onWalletChange } from './wallet.js';
+import { onWalletChange } from './wallet.js';
 
 function initThemeToggle() {
   const button = document.querySelector('[data-theme-toggle]');
@@ -66,13 +66,13 @@ function boot() {
   initFigures(document);
   initThemeToggle();
 
-  /* The wallet needs the chain and the addresses, so it waits for the config
-     rather than reading a half built one. Everything above is already on
-     screen by then, running on demo data.
+  /* The wallet needs the network and the addresses, so it waits for the
+     config rather than reading a half built one. Everything above is already
+     on screen by then, running on demo data.
 
      The app is told about every wallet change rather than asked: connecting,
-     switching account, switching chain and disconnecting all go through the
-     same path, so there is no state the two can disagree about. */
+     switching account and disconnecting all go through the same path, so
+     there is no state the two can disagree about. */
   applyConfig(document).then((config) => {
     initWallet(config);
     if (app) {
@@ -80,7 +80,6 @@ function boot() {
         app.setWallet({
           connected: state.connected,
           account: state.account,
-          onKerbChain: isOnKerbChain(config),
           config,
         });
       });

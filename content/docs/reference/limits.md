@@ -7,7 +7,7 @@ a future version that will quietly appear later.
 
 ## You can send around it
 
-Kerb is a contract you choose to call. A plain transfer from your wallet to any
+Kerb is a program you choose to call. A plain transfer from your wallet to any
 address never touches it and is always available. Nothing about Kerb constrains
 your account, because nothing about Kerb has any authority over your account.
 
@@ -27,8 +27,9 @@ guardian system. If your key is gone, Kerb offers nothing.
 
 ## Not audited
 
-There is no audit. There is also, as of this writing, no implementation. These
-documents are a specification that the Solidity work will be built against.
+There is no audit. There is also, as of this writing, no implementation and no
+deployed program. These documents are a specification that the Solana program
+will be built against, and the web app runs without sending anything.
 
 When an implementation exists and somebody audits it, this section will name the
 auditor, the version reviewed and the findings. Until this page says otherwise,
@@ -39,8 +40,8 @@ formality.
 
 ## Dust can trust an address
 
-The trust list records that a transfer settled, not how large it was. A transfer
-of one wei that settles trusts a recipient exactly as firmly as a large one.
+The trust list records that a transfer settled, not how large it was. A tiny
+transfer that settles trusts a recipient exactly as firmly as a large one.
 
 A malicious application that gets you to sign a tiny Kerb send to an address it
 controls, and that you do not cancel within the window, has permanently put that
@@ -60,34 +61,36 @@ not expire. If a counterparty becomes an adversary, Kerb will not slow you down.
 
 ## No privacy
 
-Trust lists live in public contract storage and every state change emits a
-public event. Anyone can read who has trusted whom, in both directions, for
-every address that has ever used Kerb.
+Trust lists are public accounts and every state change is a public transaction.
+Anyone can read who has trusted whom, in both directions, for every address that
+has ever used Kerb.
 
 Kerb makes no privacy claim of any kind.
 
 ## Some tokens do not work
 
-**Rebasing tokens are not supported.** Amounts are stored absolutely rather than
-as shares, so a rebase moves the contract balance away from what the hold
-records, in whichever direction the rebase went.
+**Some Token-2022 mints are refused.** A mint with a transfer hook, a permanent
+delegate or confidential transfers cannot be held, because each can move or
+block the escrowed tokens behind Kerb's back. They can still go straight through
+to an address already on your list.
 
-**A token with a recipient blocklist can strand a hold.** If the token refuses
-to move to the recipient at settlement time, `settle` reverts. The window has
-closed so `cancel` is illegal. The hold stays pending until the block is lifted,
-possibly forever. This is a genuine trap with no clean answer currently
-specified. See [Assets](../implementation/assets.md).
+**A token whose issuer can freeze accounts can strand a hold.** Many mints keep
+a freeze authority, stablecoins among them. If the issuer freezes a hold's
+escrow account, neither `cancel` nor `settle` can move the tokens. The hold
+stays open until the issuer thaws it, possibly forever. This is a genuine trap
+with no clean answer currently specified. See
+[Assets](../implementation/assets.md).
 
 ## It cannot be fixed after deployment
 
-`KerbCore` has no upgrade path, no proxy and no admin. That is the point, and it
-cuts both ways: a bug discovered after deployment cannot be patched. The only
-response is for everybody to move to a new deployment and rebuild their trust
-lists through fresh settled transfers.
+The Kerb program's upgrade authority is revoked at deploy, and it has no admin.
+That is the point, and it cuts both ways: a bug discovered after deployment
+cannot be patched. The only response is for everybody to move to a new
+deployment and rebuild their trust lists through fresh settled transfers.
 
 That is why the [Testing](../implementation/testing.md) plan is specified as
 tightly as it is, and why an audit matters more here than it would for an
-upgradeable contract.
+upgradeable program.
 
 ## It slows down your first transfer
 

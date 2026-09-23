@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -136,14 +136,14 @@
 <h3 id="your-transaction-history">Your transaction history<a class="headerlink" href="#your-transaction-history" title="Permanent link">#</a></h3>
 <p>Your history is a projection of chain state. It is assembled from every transfer
 that names your address, in either direction. That means its contents are
-determined by <strong>everyone</strong>, not by you. Anyone holding gas can add a row to it,
-permanently, for a fraction of a cent, without your consent and without any
-signature from you.</p>
+determined by <strong>everyone</strong>, not by you. Anyone holding a few lamports can add a
+row to it, permanently, for a fraction of a cent, without your consent and
+without any signature from you.</p>
 <p>The history is not wrong to work this way. It is a faithful record of what the
 chain contains. The problem is that it is presented as if it were yours, and it
 is not. It is a public writeable surface rendered inside a private looking
 interface.</p>
-<pre><code>Transaction history          write access: anyone with gas
+<pre><code>Transaction history          write access: anyone with a lamport to spare
 </code></pre>
 <h3 id="a-list-built-from-your-completed-sends">A list built from your completed sends<a class="headerlink" href="#a-list-built-from-your-completed-sends" title="Permanent link">#</a></h3>
 <p>Now consider a list with exactly one rule for appending to it: an address is

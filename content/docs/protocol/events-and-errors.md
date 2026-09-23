@@ -3,135 +3,158 @@
 ## Events
 
 Every state change emits exactly one primary event, plus `Trusted` when a
-settlement adds a recipient that was not already on the list. The log is
-complete enough to rebuild any sender view without reading storage, which is
-what lets a frontend work without a backend.
+settlement adds a recipient that was not already on the list. Events are emitted
+through a self CPI (Anchor's `emit_cpi!`), so they are recorded as instruction
+data in the transaction rather than as log lines, which RPC nodes are free to
+truncate. That makes the history complete enough to rebuild any sender's past
+without a backend.
 
-```solidity
-event Sent(
-    address indexed sender,
-    address indexed recipient,
-    address indexed asset,
-    uint256 amount
-);
+```rust
+#[event]
+pub struct Sent {
+    pub sender: Pubkey,
+    pub recipient: Pubkey,
+    pub mint: Pubkey,
+    pub amount: u64,
+}
 
-event Held(
-    bytes32 indexed holdId,
-    address indexed sender,
-    address indexed recipient,
-    address asset,
-    uint256 amount,
-    uint64  releaseAt
-);
+#[event]
+pub struct Held {
+    pub hold: Pubkey,
+    pub sender: Pubkey,
+    pub recipient: Pubkey,
+    pub mint: Pubkey,
+    pub amount: u64,
+    pub release_at: i64,
+}
 
-event Cancelled(
-    bytes32 indexed holdId,
-    address indexed sender,
-    address indexed recipient,
-    address asset,
-    uint256 amount
-);
+#[event]
+pub struct Cancelled {
+    pub hold: Pubkey,
+    pub sender: Pubkey,
+    pub recipient: Pubkey,
+    pub mint: Pubkey,
+    pub amount: u64,
+}
 
-event Settled(
-    bytes32 indexed holdId,
-    address indexed sender,
-    address indexed recipient,
-    address asset,
-    uint256 amount,
-    bool    delivered      // false when the amount went to claimable instead
-);
+#[event]
+pub struct Settled {
+    pub hold: Pubkey,
+    pub sender: Pubkey,
+    pub recipient: Pubkey,
+    pub mint: Pubkey,
+    pub amount: u64,
+    pub delivered: bool,     // false when the amount went to a claim instead
+}
 
-event Trusted(
-    address indexed sender,
-    address indexed recipient
-);
+#[event]
+pub struct Trusted {
+    pub sender: Pubkey,
+    pub recipient: Pubkey,
+}
 
-event Forgotten(
-    address indexed sender,
-    address indexed recipient
-);
+#[event]
+pub struct Forgotten {
+    pub sender: Pubkey,
+    pub recipient: Pubkey,
+}
 
-event DwellSet(
-    address indexed sender,
-    uint64 dwellSeconds
-);
+#[event]
+pub struct DwellSet {
+    pub sender: Pubkey,
+    pub dwell_seconds: u64,
+}
 
-event Claimed(
-    address indexed recipient,
-    address indexed asset,
-    uint256 amount
-);
+#[event]
+pub struct Claimed {
+    pub recipient: Pubkey,
+    pub mint: Pubkey,
+    pub amount: u64,
+}
 ```
 
-### Indexing notes
+### Finding events
 
-`Sent`, `Held` and `Cancelled` index sender and recipient so a frontend can
-filter a user view with one topic filter in each direction. `Held` indexes
-`holdId` rather than `asset`, because three indexed slots is the EVM limit and a
-hold is far more often looked up by id than by asset.
+Solana has no topic index. A transaction is found through the accounts it
+touched: `getSignaturesForAddress` on an account returns every transaction that
+included it, and `getTransaction` returns the events inside each. Every Kerb
+instruction includes the sender's wallet, the recipient's wallet and the account
+being changed, so each of them is a handle on its history.
 
-`Settled` carries `delivered`. When it is false the recipient was credited to
-`claimable` because a push failed, and an interface should tell them to call
-`claim`. See [Assets](../implementation/assets.md).
+`Settled` carries `delivered`. When it is false the recipient's token account
+was frozen and the amount went to a claim account instead, and an interface
+should tell them to call `claim`. See [Assets](../implementation/assets.md).
 
 `Trusted` is emitted only on a genuinely new addition, never on a repeat
 settlement to an address already on the list. A consumer can therefore treat the
-`Trusted` log as the exact contents of a sender list, applying `Forgotten` as
-removals, without deduplicating.
+`Trusted` events as the exact contents of a sender's list, applying `Forgotten`
+as removals, without deduplicating.
 
-### Rebuilding a view from logs
+### Current state versus history
 
-| View | Filter |
+For current state, do not replay events at all. Read the accounts, which are the
+state. Events are for history and ordering.
+
+| View | Source |
 |---|---|
-| My trust list | `Trusted(sender = me)` minus `Forgotten(sender = me)`, in block order |
-| My pending holds | `Held(sender = me)` minus `Settled` and `Cancelled` on the same `holdId` |
-| Payments I received | `Sent(recipient = me)` and `Settled(recipient = me)` |
-| Who has me on their list | `Trusted(recipient = me)` minus `Forgotten(recipient = me)` |
+| My trust list, now | contact accounts filtered on `sender = me` |
+| My pending holds, now | hold accounts filtered on `sender = me` |
+| My trust list, in the order it was built | `Trusted(sender = me)` minus `Forgotten(sender = me)`, in slot order |
+| Payments I received | `Sent` and `Settled` in transactions that include my wallet |
+| Who has me on their list | contact accounts filtered on `recipient = me`, at byte offset 40 |
 
 The last row is worth noticing. It is public. Anybody can see who has trusted
-whom, because the events are public and the storage is public. Kerb does not
+whom, because accounts are public and transactions are public. Kerb does not
 claim privacy and nothing in this design should be read as providing it.
 
 ## Errors
 
-Custom errors throughout, no revert strings.
+A single `#[error_code]` enum. Anchor numbers custom errors from 6000 in
+declaration order, so the order below is part of the interface and must never be
+rearranged.
 
-```solidity
-error ZeroRecipient();      // recipient is address(0)
-error ZeroAmount();         // amount is 0
-error SelfSend();           // recipient == msg.sender
-error ValueMismatch();      // msg.value does not match the native amount
-error NativeNotAccepted();  // ether sent alongside an ERC20 transfer
-error HoldNotFound();       // no pending hold at this id
-error HoldPending();        // a hold for this sender, recipient and asset already exists
-error NotSender();          // caller is not the hold sender
-error WindowOpen();         // settle attempted before releaseAt
-error WindowClosed();       // cancel attempted at or after releaseAt
-error DwellOutOfRange();    // setDwell outside [MIN_DWELL, MAX_DWELL] and not 0
-error NothingToClaim();     // claim with a zero balance
-error TransferFailed();     // ERC20 transfer returned false or reverted
+```rust
+#[error_code]
+pub enum KerbError {
+    ZeroRecipient,        // 6000  recipient is the all zero key
+    ZeroAmount,           // 6001  amount is 0, or nothing arrived in escrow
+    SelfSend,             // 6002  recipient is the sender
+    BelowRentExempt,      // 6003  a SOL hold under the rent exempt minimum
+    RecipientExecutable,  // 6004  a SOL send to a program account
+    HoldPending,          // 6005  a hold for this sender, recipient and mint is open
+    NotSender,            // 6006  signer is not the hold's sender
+    WindowOpen,           // 6007  settle before release_at
+    WindowClosed,         // 6008  cancel at or after release_at
+    DwellOutOfRange,      // 6009  set_dwell outside [MIN_DWELL, MAX_DWELL] and not 0
+    NothingToClaim,       // 6010  claim with a zero balance
+    UnsupportedMint,      // 6011  a Token-2022 extension Kerb refuses, see Assets
+}
 ```
 
-### Which function raises what
+`HoldNotFound` has no entry. A hold that does not exist is an account that does
+not exist, and Anchor rejects the instruction before Kerb's code runs, with its
+own `AccountNotInitialized`. An interface should map that to the same message.
 
-| Function | Can revert with |
+### Which instruction raises what
+
+| Instruction | Can fail with |
 |---|---|
-| `send` | `ZeroRecipient`, `ZeroAmount`, `SelfSend`, `ValueMismatch`, `NativeNotAccepted`, `HoldPending`, `TransferFailed` |
-| `cancel` | `HoldNotFound`, `NotSender`, `WindowClosed`, `TransferFailed` |
-| `settle` | `HoldNotFound`, `WindowOpen`, `TransferFailed` |
-| `forget` | none, removing an absent entry is a no op |
-| `setDwell` | `DwellOutOfRange` |
-| `claim` | `NothingToClaim`, `TransferFailed` |
+| `send` | `ZeroRecipient`, `ZeroAmount`, `SelfSend`, `BelowRentExempt`, `RecipientExecutable`, `HoldPending`, `UnsupportedMint`, and the token program's own errors |
+| `cancel` | `NotSender`, `WindowClosed`, a missing hold |
+| `settle` | `WindowOpen`, a missing hold |
+| `forget` | none, forgetting an absent entry is a no op |
+| `set_dwell` | `DwellOutOfRange` |
+| `claim` | `NothingToClaim` |
 
 `forget` on an address that is not on the list succeeds silently and emits
-nothing. Making it revert would leak whether an address is on a list to a caller
-who is guessing, and would make a batch cleanup awkward for no benefit.
+nothing. Making it fail would leak nothing new, since contact accounts are
+public, but it would make a batch cleanup awkward for no benefit.
 
-### Why no revert strings
+### Why numbered errors and no messages in the interface
 
-Custom errors cost less to deploy and less to revert with, and they carry a
-selector a frontend can match on exactly rather than comparing text. The Kerb
-frontend maps each selector to a message in its own copy, so the wording can
-improve without touching an immutable contract.
+Anchor attaches a message to each error in the program binary, but an interface
+should not show it. The number is exact and stable; the message is whatever the
+author typed. The Kerb frontend maps each number to a sentence in its own copy,
+so the wording can improve without touching a program that can no longer change.
 
-Next: [KerbCore](../implementation/core.md).
+Next: [The Kerb program](../implementation/core.md).

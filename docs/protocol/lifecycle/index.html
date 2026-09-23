@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Transfer lifecycle | Kerb docs</title>
-<meta name="description" content="A hold occupies exactly one of four states. Two of them are terminal, and the hold is deleted from storage when either is reached.">
+<meta name="description" content="A hold is an account, and it has only one state while it exists: pending. The two terminal outcomes close the account, returning its rent to the sender.">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Transfer lifecycle | Kerb docs">
-<meta property="og:description" content="A hold occupies exactly one of four states. Two of them are terminal, and the hold is deleted from storage when either is reached.">
+<meta property="og:description" content="A hold is an account, and it has only one state while it exists: pending. The two terminal outcomes close the account, returning its rent to the sender.">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs/protocol/lifecycle">
 <link rel="canonical" href="" data-site-url="/docs/protocol/lifecycle">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -131,9 +131,9 @@
             <div class="docs-prose">
 <h1 id="transfer-lifecycle">Transfer lifecycle</h1>
 <h2 id="states">States<a class="headerlink" href="#states" title="Permanent link">#</a></h2>
-<p>A hold occupies exactly one of four states. Two of them are terminal, and the
-hold is deleted from storage when either is reached.</p>
-<pre><code>                     send(recipient, asset, amount)
+<p>A hold is an account, and it has only one state while it exists: pending. The
+two terminal outcomes close the account, returning its rent to the sender.</p>
+<pre><code>                     send(recipient, mint, amount)
                                  |
                  +---------------+---------------+
                  |                               |
@@ -141,89 +141,93 @@ hold is deleted from storage when either is reached.</p>
                  |                               |
             [ straight ]                    [ PENDING ]
             funds moved                  funds in escrow
-            nothing stored                 hold stored
+            nothing stored              hold account open
                  |                               |
                done             +----------------+----------------+
                                 |                                 |
-                     before releaseAt                  at or after releaseAt
+                    before release_at                at or after release_at
                                 |                                 |
-                          cancel()                           settle()
+                             cancel                            settle
                                 |                                 |
                         [ CANCELLED ]                       [ SETTLED ]
                      funds back to sender            funds to recipient
                      nothing trusted                 recipient trusted
-                     hold deleted                    hold deleted
+                     hold closed                     hold closed
 </code></pre>
-<p><code>status</code> is stored as a <code>uint8</code> while the hold exists. Because settled and
-cancelled holds are deleted, the only status ever read back from storage is
-<code>PENDING</code>. The constants are kept for event clarity and for the moment inside a
-transaction between the state change and the delete.</p>
-<pre><code class="language-solidity">uint8 constant STATUS_NONE      = 0;
-uint8 constant STATUS_PENDING   = 1;
-uint8 constant STATUS_SETTLED   = 2;
-uint8 constant STATUS_CANCELLED = 3;
-</code></pre>
+<p>There is no status field. An open hold account is pending; a closed one no
+longer exists. The outcome of a closed hold is recorded in the transaction that
+closed it and in the event it emitted, not in an account.</p>
 <h2 id="path-one-straight-through">Path one, straight through<a class="headerlink" href="#path-one-straight-through" title="Permanent link">#</a></h2>
-<p>Precondition: the recipient is on the sender trusted set.</p>
+<p>Precondition: the sender's contact account for this recipient exists.</p>
 <ol>
-<li>Validate that the recipient is not the zero address and not <code>msg.sender</code>, and
+<li>Validate that the recipient is not the all zero key and not the sender, and
    that the amount is not zero.</li>
-<li>Move the asset from sender to recipient. For the native asset this forwards
-   <code>msg.value</code>. For an ERC20 it is a single <code>transferFrom</code> from the sender
-   directly to the recipient, so the funds never touch <code>KerbCore</code>.</li>
+<li>Move the asset from sender to recipient. For SOL this is a system transfer
+   from the sender's wallet. For an SPL token it is a single <code>transfer_checked</code>
+   from the sender's token account directly to the recipient's, so the funds
+   never touch an account the program owns.</li>
 <li>Emit <code>Sent</code>.</li>
 </ol>
-<p>No storage is written. No hold id is produced. The function returns
-<code>bytes32(0)</code>.</p>
-<p>This path should cost close to a bare transfer plus one set membership read.</p>
+<p>No account is created. The sender's signature on the transaction is what
+authorises the movement; there is no allowance, and nothing outlives the
+transaction.</p>
+<p>This path should cost close to a bare transfer plus one account read.</p>
 <h2 id="path-two-a-new-recipient">Path two, a new recipient<a class="headerlink" href="#path-two-a-new-recipient" title="Permanent link">#</a></h2>
-<p>Precondition: the recipient is not on the sender list, and no pending hold
-exists for the same sender, recipient and asset triple.</p>
+<p>Precondition: no contact account exists for the pair, and no hold is open for
+the same sender, recipient and mint.</p>
 <ol>
-<li>Validate as above.</li>
-<li>Compute <code>holdId = keccak256(abi.encode(sender, recipient, asset))</code>.</li>
-<li>Revert with <code>HoldPending</code> if that hold is already pending.</li>
-<li>Pull the asset into <code>KerbCore</code>. For an ERC20 the amount recorded is the
-   balance <strong>actually received</strong>, which matters for fee on transfer tokens. See
-   <a href="/docs/implementation/assets">Assets</a>.</li>
-<li>Write the hold with <code>releaseAt = block.timestamp + dwellOf(sender)</code>.</li>
-<li>Add <code>holdId</code> to the sender pending set.</li>
+<li>Validate as above, and for SOL that the amount is at least the rent exempt
+   minimum for an empty account. See <a href="/docs/implementation/assets">Assets</a>.</li>
+<li>Derive the hold address from <code>("hold", sender, recipient, mint)</code>.</li>
+<li>Create the hold account. Creation fails if one is already open at that
+   address, which is how a second overlapping hold is refused.</li>
+<li>Move the asset into escrow. For SOL the lamports go into the hold account
+   itself. For an SPL token they go into a vault token account whose authority
+   is the hold. The amount recorded is the amount <strong>actually received</strong>, which
+   matters for Token-2022 mints with a transfer fee.</li>
+<li>Write <code>release_at = clock.unix_timestamp + dwell_of(sender)</code>.</li>
 <li>Emit <code>Held</code>.</li>
 </ol>
+<p>The sender pays the rent for the hold and the vault. Both deposits come back
+when the hold closes, whichever way it closes.</p>
 <h2 id="cancel">Cancel<a class="headerlink" href="#cancel" title="Permanent link">#</a></h2>
-<p>Callable only by the hold sender, only while <code>block.timestamp &lt; releaseAt</code>.</p>
+<p>Signed by the hold's sender, only while <code>clock &lt; release_at</code>.</p>
 <ol>
-<li>Load the hold, revert <code>HoldNotFound</code> if the status is not pending.</li>
-<li>Revert <code>NotSender</code> if the caller is not the sender.</li>
-<li>Revert <code>WindowClosed</code> if <code>block.timestamp &gt;= releaseAt</code>.</li>
-<li>Remove the id from the pending set and delete the hold, <strong>before</strong> moving any
-   value.</li>
-<li>Return the asset to the sender.</li>
+<li>Check that the hold account exists and belongs to this program.</li>
+<li>Check that the signer is the sender recorded in the hold.</li>
+<li>Reject with <code>WindowClosed</code> if <code>clock &gt;= release_at</code>.</li>
+<li>Return the escrowed asset to the sender.</li>
+<li>Close the vault and the hold, returning their rent to the sender.</li>
 <li>Emit <code>Cancelled</code>.</li>
 </ol>
 <p>Nothing is trusted. As far as the trust list is concerned this transfer never
 happened.</p>
 <h2 id="settle">Settle<a class="headerlink" href="#settle" title="Permanent link">#</a></h2>
-<p>Callable by anyone, only when <code>block.timestamp &gt;= releaseAt</code>.</p>
+<p>Anyone may sign it, only when <code>clock &gt;= release_at</code>.</p>
 <ol>
-<li>Load the hold, revert <code>HoldNotFound</code> if the status is not pending.</li>
-<li>Revert <code>WindowOpen</code> if <code>block.timestamp &lt; releaseAt</code>.</li>
-<li>Remove the id from the pending set and delete the hold.</li>
-<li>Append the recipient to the sender trusted set if absent, emitting <code>Trusted</code>
-   only when it is newly added.</li>
-<li>Deliver the asset to the recipient. If a native push fails, credit
-   <code>claimable[recipient][asset]</code> rather than reverting.</li>
+<li>Check that the hold account exists and belongs to this program.</li>
+<li>Reject with <code>WindowOpen</code> if <code>clock &lt; release_at</code>.</li>
+<li>Create the sender's contact account for this recipient if it does not exist,
+   emitting <code>Trusted</code> only when it is newly created. Its rent is paid out of the
+   hold's own rent deposit, so the settler does not fund the sender's list.</li>
+<li>Deliver the asset to the recipient. For an SPL token whose recipient account
+   is frozen, move it to a claim account instead of failing. See
+   <a href="/docs/implementation/assets">Assets</a>.</li>
+<li>Close the vault and the hold, returning the remaining rent to the sender.</li>
 <li>Emit <code>Settled</code>.</li>
 </ol>
 <p>Note the ordering. Trust is granted at the point the transfer becomes the
 recipient's, not conditionally on the delivery mechanics succeeding. A recipient
-contract that cannot accept a push has still been paid, through the claim
-balance, and the sender has still demonstrated intent.</p>
+whose token account is frozen has still been paid, through the claim account,
+and the sender has still demonstrated intent.</p>
+<p>The settler pays the transaction fee, and the rent for the recipient's token
+account if it has to be created. The Kerb app settles on the sender's behalf, so
+in practice that is the sender.</p>
 <p><strong>Open question.</strong> Whether trust should be withheld when delivery falls back to
-<code>claimable</code>. The argument for withholding is that a sender may not consider a
-bounced payment a completed relationship. The argument against is that it makes
-trust depend on the recipient code rather than the sender action. Currently
-specified as granting trust.</p>
+a claim. The argument for withholding is that a sender may not consider a
+blocked payment a completed relationship. The argument against is that it makes
+trust depend on the recipient's circumstances rather than the sender's action.
+Currently specified as granting trust.</p>
 <h2 id="timing-edge-cases">Timing edge cases<a class="headerlink" href="#timing-edge-cases" title="Permanent link">#</a></h2>
 <div class="docs-table-wrap"><table>
 <thead>
@@ -234,27 +238,27 @@ specified as granting trust.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>block.timestamp == releaseAt</code></td>
-<td>Settle succeeds, cancel reverts. The boundary belongs to the recipient.</td>
+<td><code>clock == release_at</code></td>
+<td>Settle succeeds, cancel fails. The boundary belongs to the recipient.</td>
 </tr>
 <tr>
-<td>Two settles in one block</td>
-<td>The second reverts with <code>HoldNotFound</code>, because the first deleted the hold.</td>
+<td>Two settles in the same slot</td>
+<td>The second fails, because the first closed the hold.</td>
 </tr>
 <tr>
-<td>Cancel and settle in the same block</td>
-<td>Whichever executes first wins. Cancel is only legal strictly before <code>releaseAt</code>, so the two are never both legal.</td>
+<td>Cancel and settle in the same slot</td>
+<td>Whichever executes first wins. Cancel is only legal strictly before <code>release_at</code>, so the two are never both legal.</td>
 </tr>
 <tr>
-<td>A second <code>send</code> to the same recipient and asset while pending</td>
-<td>Reverts with <code>HoldPending</code>.</td>
+<td>A second <code>send</code> to the same recipient and mint while pending</td>
+<td>Fails with <code>HoldPending</code>.</td>
 </tr>
 <tr>
-<td>A second <code>send</code> to the same recipient, different asset, while pending</td>
-<td>Allowed, because the hold id differs.</td>
+<td>A second <code>send</code> to the same recipient, different mint, while pending</td>
+<td>Allowed, because the hold address differs.</td>
 </tr>
 <tr>
-<td><code>send</code> to a recipient trusted between the send and a pending hold settling</td>
+<td>The recipient becomes trusted while another hold to them is pending</td>
 <td>The pending hold is unaffected and still requires settle.</td>
 </tr>
 </tbody>

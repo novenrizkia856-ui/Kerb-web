@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kerb</title>
-<meta name="description" content="First send waits. The rest fly.">
+<meta name="description" content="First send waits. The rest fly. Address poisoning protection for Solana.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Kerb">
 <meta property="og:description" content="First send waits. The rest fly.">
@@ -40,9 +40,9 @@
 
 <a class="skip-link" href="#content">Skip to content</a>
 
-<!-- Token CA strip. Brief 8.1. First element in the document, above the nav. -->
+<!-- Token mint strip. Brief 8.1. First element in the document, above the nav. -->
 <div class="ca-strip" data-token-strip>
-  <span class="label">Token CA</span>
+  <span class="label">Token mint</span>
   <code class="ca-value" data-token-value>Coming Soon</code>
   <span class="lead" aria-hidden="true"></span>
   <span class="ca-actions">
@@ -72,7 +72,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="#how">How it works</a>
       <a class="nav-link panel-hover" href="#limits">Limits</a>
-      <a class="nav-link panel-hover" href="#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="#program">Program</a>
       <a class="nav-link panel-hover" href="/docs">Docs</a>
     </div>
 
@@ -121,7 +121,7 @@
           </div>
 
           <div class="hero-col">
-            <span class="hero-eyebrow">Noncustodial. Immutable. Free.</span>
+            <span class="hero-eyebrow">Solana. Noncustodial. Free.</span>
 
             <h1 class="hero-title" id="hero-title" data-typed="load">
               <span data-typer>First send waits.</span>
@@ -150,8 +150,8 @@
               <div class="lk-block">
                 <p class="lk-head">What your wallet shows you</p>
                 <div class="lk-shorts">
-                  <code class="lk-short">0x71C7&hellip;976F</code>
-                  <code class="lk-short">0x71C7&hellip;976F</code>
+                  <code class="lk-short">ZtQW&hellip;svWN</code>
+                  <code class="lk-short">ZtQW&hellip;svWN</code>
                 </div>
                 <p class="lk-verdict">Identical.</p>
               </div>
@@ -160,11 +160,11 @@
                 <p class="lk-head">The same two, in full</p>
                 <ul class="lk-fulls">
                   <li class="lk-row" data-kind="trust">
-                    <code class="lk-addr"><span class="lk-fix">0x71C7</span><span class="lk-mid">656EC7ab88b098defB751B7401B5f6d8</span><span class="lk-fix">976F</span></code>
+                    <code class="lk-addr"><span class="lk-fix">ZtQW</span><span class="lk-mid">M4ZkTjPu3yo5EWyQgbJJzstEfc7THPKmxFU</span><span class="lk-fix">svWN</span></code>
                     <span class="tag">yours</span>
                   </li>
                   <li class="lk-row" data-kind="fake">
-                    <code class="lk-addr"><span class="lk-fix">0x71C7</span><span class="lk-mid">a91f3d02bc7714e0a4c8817ef0c29b41</span><span class="lk-fix">976F</span></code>
+                    <code class="lk-addr"><span class="lk-fix">ZtQW</span><span class="lk-mid">uomiwqzW6cr31s9Fd3inL9hHahUmq875Lae</span><span class="lk-fix">svWN</span></code>
                     <span class="tag">the lookalike</span>
                   </li>
                 </ul>
@@ -292,13 +292,13 @@
 
           <figure class="fig fig--paths" data-fig="paths" data-reveal-group>
             <div class="path-row" data-kind="trust" data-reveal>
-              <code class="path-addr">0x71C7&hellip;976F</code>
+              <code class="path-addr">ZtQW&hellip;svWN</code>
               <span class="tag">on your list</span>
               <span class="path-arrow" aria-hidden="true">&rarr;</span>
               <span class="path-out">Arrives now. Kerb never holds it.</span>
             </div>
             <div class="path-row" data-kind="wait" data-reveal>
-              <code class="path-addr">0x4E83&hellip;311C</code>
+              <code class="path-addr">DFcL&hellip;rQdo</code>
               <span class="tag">not on your list</span>
               <span class="path-arrow" aria-hidden="true">&rarr;</span>
               <span class="path-out">Waits 15 minutes. Yours to cancel.</span>
@@ -327,8 +327,8 @@
               <p class="prop-body">Nobody can change it later.</p>
             </div>
             <div class="prop" data-reveal>
-              <h3 class="prop-name">No upgrade path</h3>
-              <p class="prop-body">Deployed once. Frozen forever.</p>
+              <h3 class="prop-name">No upgrade authority</h3>
+              <p class="prop-body">Revoked at deploy. Frozen forever.</p>
             </div>
             <div class="prop" data-reveal>
               <h3 class="prop-name">No fee</h3>
@@ -340,7 +340,7 @@
             </div>
             <div class="prop" data-reveal>
               <h3 class="prop-name">No backend</h3>
-              <p class="prop-body">Runs on chain state only.</p>
+              <p class="prop-body">Runs on Solana state only.</p>
             </div>
             <div class="prop" data-reveal>
               <h3 class="prop-name">No token needed</h3>
@@ -348,22 +348,22 @@
             </div>
           </div>
 
-          <figure class="fig fig--abi" data-fig="abi" data-reveal-group>
-            <div class="abi-cols">
-              <div class="abi-col" data-reveal>
-                <p class="abi-head">What you can call</p>
-                <ul class="abi-list" data-abi-present></ul>
+          <figure class="fig fig--idl" data-fig="idl" data-reveal-group>
+            <div class="idl-cols">
+              <div class="idl-col" data-reveal>
+                <p class="idl-head">What you can call</p>
+                <ul class="idl-list" data-idl-present></ul>
               </div>
-              <div class="abi-col" data-reveal>
-                <p class="abi-head">What nobody can call</p>
-                <ul class="abi-list" data-abi-absent></ul>
+              <div class="idl-col" data-reveal>
+                <p class="idl-head">What nobody can call</p>
+                <ul class="idl-list" data-idl-absent></ul>
               </div>
             </div>
             <figcaption class="fig-cap" data-reveal>
-              Read from the deployed contract's own ABI, all
-              <span data-abi-count>&mdash;</span> functions of it. The right
-              hand column is not a promise. Those functions are not in the
-              contract, so there is nothing to call.
+              Read from the Kerb program's planned IDL, all
+              <span data-idl-count>&mdash;</span> instructions of it. The right
+              hand column is not a promise. Those instructions are not in the
+              program, so there would be nothing to call.
             </figcaption>
           </figure>
         </section>
@@ -391,42 +391,42 @@
           </div>
         </section>
 
-        <!-- 7. Contracts ----------------------------------------------------->
-        <div class="rule" aria-hidden="true" data-contracts-rule></div>
-        <div class="section-label" data-contracts-label><span class="label">[ Deployed at ]</span></div>
+        <!-- 7. Program ------------------------------------------------------->
+        <div class="rule" aria-hidden="true" data-program-rule></div>
+        <div class="section-label" data-program-label><span class="label">[ Deployed at ]</span></div>
 
-        <section class="contracts" id="contracts" data-contracts aria-labelledby="contracts-title">
-          <h2 class="section-title contracts-title" id="contracts-title" data-typed>
-            <span data-typer>Contracts.</span>
+        <section class="program" id="program" data-program-section aria-labelledby="program-title">
+          <h2 class="section-title program-title" id="program-title" data-typed>
+            <span data-typer>Program.</span>
           </h2>
 
-          <div class="ledger contract-ledger" data-reveal-group>
-            <div class="ledger-row contract-row" data-reveal data-contract="core">
-              <span class="k">Core</span>
+          <div class="ledger program-ledger" data-reveal-group>
+            <div class="ledger-row program-row" data-reveal data-account="program">
+              <span class="k">Program</span>
               <span class="lead" aria-hidden="true"></span>
-              <code class="v" data-contract-value>Not deployed</code>
-              <a class="btn-corner btn--sm contract-act" data-contract-link hidden href="">
+              <code class="v" data-account-value>Not deployed</code>
+              <a class="btn-corner btn--sm program-act" data-account-link hidden href="">
                 <span class="c c-tl" aria-hidden="true"></span>
                 <span class="c c-tr" aria-hidden="true"></span>
                 <span class="c c-bl" aria-hidden="true"></span>
                 <span class="c c-br" aria-hidden="true"></span>Explorer</a>
-              <button type="button" class="btn-corner btn--sm contract-act" data-contract-copy hidden>
+              <button type="button" class="btn-corner btn--sm program-act" data-account-copy hidden>
                 <span class="c c-tl" aria-hidden="true"></span>
                 <span class="c c-tr" aria-hidden="true"></span>
                 <span class="c c-bl" aria-hidden="true"></span>
                 <span class="c c-br" aria-hidden="true"></span>Copy</button>
             </div>
 
-            <div class="ledger-row contract-row" data-reveal data-contract="lens">
-              <span class="k">Lens</span>
+            <div class="ledger-row program-row" data-reveal data-account="mint">
+              <span class="k">Mint</span>
               <span class="lead" aria-hidden="true"></span>
-              <code class="v" data-contract-value>Not deployed</code>
-              <a class="btn-corner btn--sm contract-act" data-contract-link hidden href="">
+              <code class="v" data-account-value>Coming Soon</code>
+              <a class="btn-corner btn--sm program-act" data-account-link hidden href="">
                 <span class="c c-tl" aria-hidden="true"></span>
                 <span class="c c-tr" aria-hidden="true"></span>
                 <span class="c c-bl" aria-hidden="true"></span>
                 <span class="c c-br" aria-hidden="true"></span>Explorer</a>
-              <button type="button" class="btn-corner btn--sm contract-act" data-contract-copy hidden>
+              <button type="button" class="btn-corner btn--sm program-act" data-account-copy hidden>
                 <span class="c c-tl" aria-hidden="true"></span>
                 <span class="c c-tr" aria-hidden="true"></span>
                 <span class="c c-bl" aria-hidden="true"></span>
@@ -436,7 +436,7 @@
             <div class="ledger-row">
               <span class="k">Network</span>
               <span class="lead" aria-hidden="true"></span>
-              <span class="v" data-chain-name>Robinhood Chain</span>
+              <span class="v" data-network-name>Solana Mainnet</span>
             </div>
           </div>
         </section>
@@ -476,11 +476,11 @@
     <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
       <path d="M2 2h20v2H2V2Zm0 6h20v2H2V8Zm0 6h20v2H2v-2Zm0 6h20v2H2v-2Z"></path>
     </svg>Limits</a>
-  <a href="#contracts">
+  <a href="#program">
     <span class="tab-mark" aria-hidden="true"></span>
     <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
       <path fill-rule="evenodd" d="M6 1h12v1h1v20h-1v1H6v-1H5V2h1V1Zm2 6h8v2H8V7Zm0 5h8v2H8v-2Zm0 5h5v2H8v-2Z"></path>
-    </svg>Contracts</a>
+    </svg>Program</a>
   <a href="/docs">
     <span class="tab-mark" aria-hidden="true"></span>
     <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true" focusable="false" shape-rendering="crispEdges">

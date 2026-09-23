@@ -1,141 +1,103 @@
 # Production status
 
-Written after the contracts were deployed to Robinhood Chain (4663) and the
-site was pointed at them. It says what is ready, what is not, and what will
-mislead somebody if it ships as is.
+Written after the site was moved to Solana. It says what is ready, what is not,
+and what will mislead somebody if it ships as is.
 
 ## Ready
 
-**The landing page.** Static, config driven, no build step. The contracts
-section reads the real deployed addresses out of `config/kerb.config.json` and
-links to the explorer. Verified in a browser against the served config with no
-console errors.
+**The landing page.** Static, config driven, no build step. The token mint
+strip and the Program section read `solana.KERB_TOKEN_MINT` and
+`solana.KERB_PROGRAM_ID` out of `config/kerb.config.json`, render `Coming Soon`
+and `Not deployed` while they are empty, and link to Solana Explorer on the
+configured cluster once they are set. The instruction figure reads the planned
+interface from `config/idl/kerb.json`.
 
 **Wallet connection.** `assets/js/wallet.js` and `assets/js/wallet-ui.js`.
-EIP-6963 discovery first, so a browser with several extensions offers a choice
-instead of whichever one won the race for `window.ethereum`; a pre-6963 wallet
-falls back to the global. WalletConnect is loaded from a CDN at click time, and
-only when a project id is set, so a visitor using an extension never downloads
-it. Connect, disconnect, account display, chain switch and add, silent
-reconnect on return.
+Wallet Standard discovery first, the same protocol `@solana/wallet-adapter` is
+built on, so Phantom, Solflare, Backpack and any other standard wallet are
+offered by name. Injected globals (`window.phantom.solana`, `window.solflare`,
+`window.backpack`) are the fallback for a wallet that does not register. Connect,
+disconnect, account switching from the wallet side, and silent reconnect on
+return. With no wallet installed the picker says so and links to the three.
 
-**The app.** It transacts against the deployed contracts. See below.
+**Read only data.** `assets/js/solana-read.js`. SOL balance, SPL balances under
+both token programs, and a mint's decimals, all plain JSON-RPC over `fetch`.
+Shown in the account menu and in the compose form.
 
-## The WalletConnect project id
+## Not live, on purpose
 
-Set in `config/kerb.config.json` under `wallet.walletConnectProjectId`.
+There is no Kerb program on Solana, so the app sends nothing.
 
-**Not in a Vercel environment variable, and this is not a shortcut.** This site
-has no `package.json` and no build step. Vercel environment variables exist at
-build time and in serverless functions; a static file served to a browser never
-sees them. There is nothing here to substitute the value in.
+- **Before a wallet connects** the app runs the demo: invented contacts, a
+  twenty second window, all four screens. No network request, nothing signed.
+- **After a wallet connects** it reads the wallet's real balances, validates a
+  send against them, and stops at review. Confirm reads `Not live` and is
+  disabled, and the review says `Solana execution is not active yet. Nothing
+  will be signed or sent.` The contact list is empty, and says the list lives in
+  the program.
 
-The id is also not a secret. It travels to every visitor's browser and anybody
-can read it in devtools. What protects it is the domain allowlist in the
-WalletConnect dashboard, so add the production domain there. The public config
-file is the correct home for a public value.
+No code in the repository builds a Solana transaction or reads a wallet's
+signing features. `wallet.js` never touches `solana:signTransaction`,
+`solana:signAndSendTransaction`, `solana:signMessage` or `solana:signIn`, and
+never calls `signTransaction`, `signAllTransactions` or `sendTransaction` on an
+injected provider. `solana-read.js` has no `sendTransaction`,
+`simulateTransaction` or `requestAirdrop`. The review's Confirm handler refuses
+for any source that does not execute, even if the disabled button is forced.
 
-Leaving it empty is a supported state: the picker simply offers the installed
-extensions and no WalletConnect row.
+### Verified in a browser
 
-## Now live, not demo
-
-`app/index.html` transacts. Connect a wallet on chain 4663 and the same four
-screens drive the deployed contracts; disconnect and the demo source takes back
-over. Both sources implement one interface in `app-source.js`, so the live path
-is not a second, less tested app bolted to the side of the first.
-
-What it does:
-
-- **Send.** Native and ERC-20. For a token it checks the balance, checks the
-  allowance, and sends an approval first only when one is needed, telling you
-  which of the two signatures you are looking at. Approval is for the exact
-  amount, not unlimited — Kerb's own claim that an unlimited approval to
-  KerbCore is safe is a claim about KerbCore, and an app that habituates people
-  to signing unlimited approvals is teaching the habit that drains them
-  somewhere else.
-- **Waiting.** Open holds are found from `Held` logs filtered on the sender,
-  then resolved in one `pendingsOf` call. Each row carries a live countdown and
-  a Cancel that becomes Settle when the window closes.
-- **Cancel and settle.** Real transactions, waited on, and a reverted receipt is
-  reported as a failure rather than shown as success.
-- **Your list.** Read from `KerbLens.contactsPage`, refreshed after anything
-  that could change it.
-
-### Verified end to end, not just wired
-
-Run against a local Anvil node with the real contracts deployed and a provider
-shim standing in for a wallet:
+A test wallet was registered through the real Wallet Standard event, with spies
+on its signing features, and the config pointed at devnet with devnet USDC
+standing in for the Kerb mint:
 
 | | |
 |---|---|
-| Connect, read contacts | the `trust`ed contact and its on-chain label |
-| Trusted vs new address | read from `isTrusted`, not from mock data |
-| Send 0.01 and 0.05 ETH | `nextId` advanced, holds appeared with real windows |
-| Cancel | 0.05 ETH refunded, hold gone |
-| Settle after the window | recipient received exactly 1 ETH |
-| The property itself | the settled recipient joined the contact list |
-
-### Two bugs that testing found
-
-**The countdown asked the wrong clock.** `cancel` and `settle` are decided by
-`block.timestamp`, and the first version computed the time remaining from
-`Date.now()`. A user whose device clock is a few minutes fast would have been
-offered Settle on a hold the contract still considered open, and the
-transaction would have reverted in their face with nothing the app could say
-about why. Every window decision now goes through a chain clock, resynced
-whenever the lists reload. The Anvil run made this visible by putting the chain
-1,142 seconds ahead of the browser.
-
-**The demo countdown would have lied in live mode.** `mountWindow` reads
-`data-dwell` once when it mounts and closes over it, so the twenty second demo
-animation could not be retargeted at a real window of fifteen minutes to seven
-days. Rather than animate a wrong number convincingly, live mode hides that
-widget and shows the actual release time and time remaining.
+| Discovery | the wallet appeared in the picker by name |
+| Connect, silent reconnect, account switch, wallet side disconnect | all reflected in the button and the app |
+| Balances | SOL and every SPL holding listed with real amounts, the configured mint labelled `KERB` |
+| Validation | over balance, too many decimals, own address and a non mint key each refused with a sentence |
+| Review | route shown as `Held 15 min`, Confirm disabled, non live notice shown |
+| Forced Confirm click | refused with the non live notice, no state change |
+| Signing spies | never called, in either the standard or the injected fallback path |
+| Explorer links | `?cluster=devnet` appended on devnet, absent on mainnet |
+| Mobile, 375 pixels | no horizontal scroll with a filled mint, full key in the account menu stays inside the viewport |
 
 ## Still not ready
 
-### The documentation describes a contract that was never deployed
+### Mainnet balances need an RPC URL
 
-This is the one that will actively mislead people, and it is worse than a
-missing feature because it looks finished.
+`api.mainnet-beta.solana.com` answers `403 Access forbidden` to any request from
+a browser origin. With `SOLANA_RPC_URL` empty on mainnet, every balance reads as
+unavailable. Nothing breaks, the app says so, but the read only mode shows no
+numbers. Set `SOLANA_RPC_URL` to a provider endpoint whose key is restricted to
+the production domain. Devnet and testnet's public endpoints do answer browsers.
 
-| The docs say | The deployed contract has |
+### Placeholders that must stay empty until they are real
+
+| Field | State |
 |---|---|
-| `forget(address)` | `untrust(address)` |
-| `holdId = keccak256(abi.encode(sender, recipient, asset))` | a sequential `uint256` from `nextId` |
-| `holdIdOf(sender, recipient, asset)` | no such function |
-| one pending per sender/recipient/asset triple | any number of concurrent pendings |
+| `KERB_TOKEN_MINT` | empty, the strip and the Mint row read `Coming Soon` |
+| `KERB_PROGRAM_ID` | empty, the Program row reads `Not deployed` |
+| `TREASURY_ADDRESS` | empty, and nothing on the site reads it yet |
 
-`forget` appears in ten files under `content/docs/`. Anyone who integrates from
-these pages writes code that does not compile against the deployed ABI.
+Do not put a placeholder key in any of them. The validator only checks that a
+value is a well formed public key, not that it is the right one.
 
-The docs are generated from `content/docs/**` by `tools/build-docs.py` into
-`docs/`, so both trees need the fix and the generator needs re-running.
+### Landing copy that describes the future program
 
-There is a second drift worth checking while in there: earlier drafts argued
-that `trust()` deliberately does not exist. It does exist, it is one of the two
-doors into the list, and it grants a permanent bypass for that address from a
-single signature. That is a real sharp edge and the docs should describe it
-rather than deny it.
+"No upgrade authority. Revoked at deploy." and the instruction figure describe
+the specified program, not a deployed one. They are accurate to the
+specification in `content/docs/`, and the Program row saying `Not deployed`
+sits beneath them, but they should be re-read against the real program the day
+it ships.
 
-## Also fixed while looking
+The scale numbers in the landing page's second section come from studies of
+chains other than Solana. The documentation says so; the landing page does not.
 
-**WalletConnect could not load.** The CDN URL pointed at the package's own
-`dist/index.es.js`, which begins `import { EventEmitter } from "events"` — a
-bare specifier Node resolves and a browser cannot, so the import failed with a
-module resolution error before any WalletConnect code ran. The `+esm` build on
-the same CDN is bundled: no bare specifiers, and its remaining imports are
-absolute paths on the same origin. Confirmed loading in the browser, exporting
-`EthereumProvider.init`.
+## Also worth knowing
 
-**A stale cache header would have frozen every JS fix for a year.**
-`vercel.json` marked everything under `/assets/` as
-`max-age=31536000, immutable`, but no build step hashes the filenames. A
-returning visitor would have kept a stale `main.js` and `tokens.css` for a year
-after any deployment. Images and fonts keep the immutable header, because those
-genuinely do not change in place; `.js` and `.css` now revalidate.
-
-This was not theoretical. It is exactly what happened in local testing: a
-freshly written `main.js` was served from memory cache and the connect button
-did nothing until the cache was bypassed.
+**The wallet picker's spacing tokens are undefined.** `components.css` styles
+`.wallet-picker` and `.wallet-option` with `--space-2`, `--space-3`, `--step--1`,
+`--fg` and `--fg-dim`, none of which exist in `tokens.css`, so the menu renders
+with no padding. This predates the Solana move and was left alone under the
+design lock. It is a two line fix whenever the design owner wants it.

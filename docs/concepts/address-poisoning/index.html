@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Address poisoning | Kerb docs</title>
-<meta name="description" content="An address on a public chain is twenty bytes shown as forty hexadecimal characters. Almost no interface shows all forty. Wallets, explorers and block scann">
+<meta name="description" content="A Solana address is a 32 byte public key, written in base58 as 32 to 44 characters. Almost no interface shows all of them. Wallets, explorers and dashboard">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Address poisoning | Kerb docs">
-<meta property="og:description" content="An address on a public chain is twenty bytes shown as forty hexadecimal characters. Almost no interface shows all forty. Wallets, explorers and block scann">
+<meta property="og:description" content="A Solana address is a 32 byte public key, written in base58 as 32 to 44 characters. Almost no interface shows all of them. Wallets, explorers and dashboard">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs/concepts/address-poisoning">
 <link rel="canonical" href="" data-site-url="/docs/concepts/address-poisoning">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -131,20 +131,21 @@
             <div class="docs-prose">
 <h1 id="address-poisoning">Address poisoning</h1>
 <h2 id="the-attack">The attack<a class="headerlink" href="#the-attack" title="Permanent link">#</a></h2>
-<p>An address on a public chain is twenty bytes shown as forty hexadecimal
-characters. Almost no interface shows all forty. Wallets, explorers and block
-scanners truncate, because forty characters do not fit and nobody reads them
-anyway. The usual display is the first few characters, an ellipsis, and the last
-few:</p>
+<p>A Solana address is a 32 byte public key, written in base58 as 32 to 44
+characters. Almost no interface shows all of them. Wallets, explorers and
+dashboards truncate, because forty odd characters do not fit and nobody reads
+them anyway. The usual display is the first four characters, an ellipsis, and
+the last four:</p>
 <pre><code>example address, not a deployment
 
-0x71C7656EC7ab88b098defB751B7401B5f6d8976F     what the chain stores
-0x71C7…976F                                    what you are shown
+ZtQWM4ZkTjPu3yo5EWyQgbJJzstEfc7THPKmxFUsvWN     what the chain stores
+ZtQW…svWN                                       what you are shown
 </code></pre>
 <p>Address poisoning attacks that truncation directly. The attacker generates a
-vanity address whose <strong>first characters and last characters match one of yours</strong>,
+vanity key whose <strong>first characters and last characters match one of yours</strong>,
 leaving the middle, the part no interface displays, completely different. Then
-they send you something worthless: a zero value transfer, one wei, a spam token.</p>
+they send you something worthless: a single lamport, a spam token, a transfer
+of an amount too small to notice.</p>
 <p>That transfer does one thing, and it is the only thing it needs to do. It puts
 the attacker's address <strong>into your transaction history</strong>, sitting right next to
 the real one, rendered identically.</p>
@@ -162,15 +163,17 @@ and the last four, and they match. They match because they were built to match.<
 </thead>
 <tbody>
 <tr>
-<td>20 bytes, 160 bits of entropy</td>
-<td>roughly 8 characters, 32 bits at best</td>
+<td>32 bytes, 256 bits</td>
+<td>8 base58 characters, under 47 bits</td>
 </tr>
 </tbody>
 </table></div>
-<p>Finding an address that collides on the first six and last four hex characters
-is not a cryptographic break. It is a search over a space small enough that
-commodity hardware does it in seconds. The security of the full address is
-irrelevant, because the full address is not what the human checks.</p>
+<p>Finding a key that matches four characters at each end is not a cryptographic
+break. It is a vanity search: generate keys until one fits. That takes real
+compute, but it is priced in hours of rented GPU time, not in anything a user
+would ever notice, and an attacker only has to pay it once per victim address.
+The security of the full key is irrelevant, because the full key is not what the
+human checks.</p>
 <h2 id="the-scale">The scale<a class="headerlink" href="#the-scale" title="Permanent link">#</a></h2>
 <div class="docs-table-wrap"><table>
 <thead>
@@ -198,18 +201,22 @@ irrelevant, because the full address is not what the human checks.</p>
 </tr>
 </tbody>
 </table></div>
+<p>Those measurements come from chains other than Solana. The mechanism they
+measure, a truncated display and a history anyone can write to, is the same on
+Solana, where sending a lamport or creating a token account for someone costs a
+fraction of a cent.</p>
 <p>The third number is the important one. This is not an exotic attack. It is a
 well documented, industrial scale attack, and the overwhelming majority of
 wallets render the poisoned entry exactly the same way they render the real one.</p>
 <h2 id="why-the-usual-answers-do-not-close-it">Why the usual answers do not close it<a class="headerlink" href="#why-the-usual-answers-do-not-close-it" title="Permanent link">#</a></h2>
-<p><strong>Checking more characters.</strong> Asking users to compare all forty characters is
+<p><strong>Checking more characters.</strong> Asking users to compare all forty odd characters is
 asking them to do something they will not do, and the attack simply moves to
 whichever characters the new interface shows.</p>
 <p><strong>Address books.</strong> A manually maintained contact list works, right up until the
 user adds an entry by copying it out of the poisoned history. The list inherits
 the problem it was supposed to solve.</p>
 <p><strong>Blocklists.</strong> Someone has to publish the list, someone has to trust the
-publisher, and the attacker generates a fresh address per victim. This also
+publisher, and the attacker generates a fresh key per victim. This also
 reintroduces an authority, which is exactly what a noncustodial protocol is
 trying to avoid.</p>
 <p><strong>Warnings at signing time.</strong> Better, and three wallets out of fifty three do

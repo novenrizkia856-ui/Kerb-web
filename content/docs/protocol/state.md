@@ -1,113 +1,131 @@
 # State
 
-## Storage layout
+## Account layouts
 
-```solidity
-struct Hold {
-    address sender;      // slot 0, bits 0..159
-    uint64  releaseAt;   // slot 0, bits 160..223
-    uint8   status;      // slot 0, bits 224..231
-    address recipient;   // slot 1, bits 0..159
-    address asset;       // slot 2, bits 0..159
-    uint256 amount;      // slot 3
-}
+Every account starts with the 8 byte discriminator Anchor writes, so a program
+can never mistake one account type for another.
+
+```rust
+#[account]
+pub struct Hold {            // seeds: "hold", sender, recipient, mint
+    pub sender: Pubkey,      // 32
+    pub recipient: Pubkey,   // 32
+    pub mint: Pubkey,        // 32, all zeros for SOL
+    pub amount: u64,         // 8, what actually arrived in escrow
+    pub release_at: i64,     // 8, unix seconds from the Clock sysvar
+    pub bump: u8,            // 1
+}                            // 8 + 113 = 121 bytes
+
+#[account]
+pub struct Contact {         // seeds: "contact", sender, recipient
+    pub sender: Pubkey,      // 32
+    pub recipient: Pubkey,   // 32
+    pub since: i64,          // 8, when the settlement that created it landed
+    pub bump: u8,            // 1
+}                            // 8 + 73 = 81 bytes
+
+#[account]
+pub struct Settings {        // seeds: "settings", sender
+    pub sender: Pubkey,      // 32
+    pub dwell_seconds: u64,  // 8, zero means DEFAULT_DWELL
+    pub bump: u8,            // 1
+}                            // 8 + 41 = 49 bytes
+
+#[account]
+pub struct Claim {           // seeds: "claim", recipient, mint
+    pub recipient: Pubkey,   // 32
+    pub mint: Pubkey,        // 32
+    pub amount: u64,         // 8
+    pub bump: u8,            // 1
+}                            // 8 + 73 = 81 bytes
 ```
 
-Four slots per pending hold. The first three fields pack into one slot at 232
-bits of 256. `recipient` and `asset` each take a slot with 96 bits spare, and
-`amount` takes a full slot.
+`sender` sits first after the discriminator in `Hold`, `Contact` and `Settings`,
+at byte offset 8. That is deliberate: it is what lets a client ask an RPC node
+for every account of a type belonging to one sender with a single `memcmp`
+filter. See [Reading state](../implementation/lens.md).
 
-`amount` is deliberately left at `uint256` rather than squeezed into the spare
-96 bits beside `recipient`. A `uint96` caps at roughly 7.9e28, which is about 79
-billion units of an 18 decimal token. That is comfortable for most tokens and
-not comfortable for all of them, and a silent overflow on an unusual token is a
-worse outcome than one extra storage slot on a structure that is deleted again
-within minutes.
+`amount` is a `u64`, because SPL token amounts and lamports are both `u64`
+natively. There is no wider amount to accommodate and no narrowing to get wrong.
 
-Because every hold is deleted on settle or cancel, the refund recovers most of
-the write cost. Steady state storage growth from holds is zero.
+## Rent
 
-## Mappings
+Every account holds a rent exempt deposit, returned to whoever the program
+names when it is closed.
 
-```solidity
-// hold id to hold. Only ever contains pending holds.
-mapping(bytes32 => Hold) private _holds;
+| Account | Size | Deposit | Paid by | Returned |
+|---|---|---|---|---|
+| Hold | 121 bytes | 0.00173304 SOL | sender | to the sender, on cancel or settle |
+| Vault (SPL only) | 165 bytes, more with Token-2022 extensions | 0.00203928 SOL | sender | to the sender, on cancel or settle |
+| Contact | 81 bytes | 0.00145464 SOL | the hold's deposit | to the sender, on forget |
+| Settings | 49 bytes | 0.00123192 SOL | sender | to the sender, when the dwell is cleared |
+| Claim and its vault | 81 + 165 bytes | about 0.0035 SOL | the settler | to the settler, when the claim is withdrawn |
 
-// sender to the recipients they have settled a transfer to.
-mapping(address => EnumerableSet.AddressSet) private _trusted;
+Figures assume the current rent rate of 6,960 lamports per byte, including the
+128 byte account overhead. Because holds close on settle or cancel, steady state
+growth from holds is zero. Contacts persist, which is the point of them.
 
-// sender to the ids of their currently pending holds.
-mapping(address => EnumerableSet.Bytes32Set) private _pending;
-
-// sender to their chosen dwell. Zero means use DEFAULT_DWELL.
-mapping(address => uint64) private _dwell;
-
-// recipient to asset to an amount owed after a failed push delivery.
-mapping(address => mapping(address => uint256)) private _claimable;
-```
-
-`EnumerableSet` is used rather than a bare mapping plus an array because both
-sets need membership tests in the hot path and enumeration in the read path, and
-because removal has to be cheap for `forget` and for settling a pending hold.
+The contact's deposit comes out of the hold's, which is larger. So settling
+never asks the settler to fund the sender's list, and the sender's cost for a
+first transfer is one contact deposit, recoverable with `forget`.
 
 ## Hold identity
 
-```solidity
-function holdIdOf(address sender, address recipient, address asset)
-    public pure returns (bytes32)
-{
-    return keccak256(abi.encode(sender, recipient, asset));
-}
+```
+hold address = find_program_address(["hold", sender, recipient, mint], program_id)
 ```
 
 Three properties follow from this choice, and all three are intended.
 
-**It is derivable offchain.** A frontend can compute the id for a transfer it is
-about to make, without a transaction and without an event, and watch for it.
+**It is derivable off chain.** A frontend can compute the hold address for a
+transfer it is about to make, without a transaction and without an event, and
+watch it.
 
-**It is stable.** The same triple always produces the same id, so a cancelled
-hold and a later hold between the same parties for the same asset share an id.
-That is safe because a hold is deleted before a new one can be created, and
-`HoldPending` blocks the overlapping case.
+**It is stable.** The same triple always produces the same address, so a
+cancelled hold and a later hold between the same parties for the same mint share
+an address. That is safe because the account is closed before a new one can be
+created there, and account creation fails while it is open.
 
 **It is scoped to the sender.** Two senders paying the same recipient the same
-asset have different ids, so nothing about one sender is reachable from another.
+mint have different addresses, so nothing about one sender is reachable from
+another.
 
-It is not a counter, so there is no global sequence to read and no way to
-enumerate all holds across all senders from storage alone. That enumeration is
-available from the `Held` event log, which is where it belongs.
+It is not a counter, so there is no global sequence and no global account for
+concurrent sends to contend over. A sender's open holds are enumerated by
+filtering on the sender field, and history comes from transaction logs.
 
 ## Trust records
 
-The trusted set stores addresses only. It does not currently store when trust
-was granted or on what amount.
+A contact account records that a settlement happened and when. It does not
+currently record the amount or the mint.
 
-**Open question, likely to be adopted.** Store a companion mapping:
+**Open question, likely to be adopted.** Add
 
-```solidity
-mapping(address => mapping(address => uint256)) private _trustedAmount;
+```rust
+pub settled_mint: Pubkey,    // 32
+pub settled_amount: u64,     // 8
 ```
 
-recording the amount of the settling transfer. It costs one slot per trusted
-pair and enables a frontend to show an entry that was trusted on one wei
-differently from one trusted on a real payment. See the dust trust risk in
-[The trust list](../concepts/trust-list.md). The specification currently omits
-it so that the decision is explicit rather than assumed.
+to `Contact`, recording the settlement that created it. It costs 40 bytes, about
+0.00028 SOL of extra rent per contact, and lets a frontend show an entry trusted
+on a speck of dust differently from one trusted on a real payment. See the dust
+trust risk in [The trust list](../concepts/trust-list.md). The specification
+currently omits it so that the decision is explicit rather than assumed.
 
 ## Invariants
 
-These must hold after every externally callable function returns. They are the
-basis of the property tests in [Testing](../implementation/testing.md).
+These must hold after every instruction. They are the basis of the property
+tests in [Testing](../implementation/testing.md).
 
 | # | Invariant |
 |---|---|
-| 1 | `_holds[id].status` is either `STATUS_NONE` or `STATUS_PENDING`. Settled and cancelled never persist. |
-| 2 | `id` is in `_pending[sender]` if and only if `_holds[id].status == STATUS_PENDING` and `_holds[id].sender == sender`. |
-| 3 | For every asset, the contract balance is at least the sum of all pending hold amounts for that asset plus all claimable balances for that asset. |
-| 4 | A recipient enters `_trusted[sender]` only in `settle`, and leaves only in `forget`. |
-| 5 | `_dwell[sender]` is either zero, or within `[MIN_DWELL, MAX_DWELL]`. |
-| 6 | `holdIdOf(sender, recipient, asset)` matches `_holds[id]` fields for every pending id. |
-| 7 | No function lets an account modify another account trusted set, dwell, holds or claimable balance. |
+| 1 | Every open hold account has `amount > 0`, and `release_at` no later than creation time plus `MAX_DWELL`. |
+| 2 | A hold account's address equals the PDA derived from its own `sender`, `recipient` and `mint` fields. The same holds for contact, settings and claim accounts. |
+| 3 | For every hold, its escrow holds at least `amount`: the vault's token balance for an SPL hold, or lamports above the rent deposit for a SOL hold. For every claim, its vault holds at least `amount`. |
+| 4 | A contact account is created only by `settle`, and closed only by `forget`. |
+| 5 | A settings account's `dwell_seconds` is either zero, or within `[MIN_DWELL, MAX_DWELL]`. |
+| 6 | Every vault's token authority is the hold or claim account it belongs to, and nothing else. |
+| 7 | No instruction lets one key modify another key's contacts, settings, holds or claims, except `settle` completing a hold exactly as it was opened. |
 
 Invariant 3 is the solvency invariant and is the one worth fuzzing hardest.
 

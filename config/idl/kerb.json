@@ -1,0 +1,38 @@
+{
+  "name": "kerb",
+  "version": "0.0.0",
+  "status": "planned",
+  "note": "The planned interface of the Kerb Solana program, in the shape of an Anchor IDL, matching the specification in content/docs. The program is not deployed and has no program id. Nothing in this file is read on chain; the landing page renders it as a figure.",
+  "instructions": [
+    {
+      "name": "send",
+      "accounts": ["sender", "recipient", "mint", "sender_token_account", "recipient_token_account", "contact", "settings", "hold", "vault", "token_program", "associated_token_program", "system_program"],
+      "args": [{ "name": "amount", "type": "u64" }]
+    },
+    {
+      "name": "cancel",
+      "accounts": ["sender", "hold", "vault", "sender_token_account", "mint", "token_program"],
+      "args": []
+    },
+    {
+      "name": "settle",
+      "accounts": ["payer", "sender", "recipient", "hold", "vault", "recipient_token_account", "contact", "claim", "mint", "token_program", "associated_token_program", "system_program"],
+      "args": []
+    },
+    {
+      "name": "forget",
+      "accounts": ["sender", "recipient", "contact"],
+      "args": []
+    },
+    {
+      "name": "set_dwell",
+      "accounts": ["sender", "settings", "system_program"],
+      "args": [{ "name": "dwell_seconds", "type": "u64" }]
+    },
+    {
+      "name": "claim",
+      "accounts": ["recipient", "claim", "claim_vault", "destination", "mint", "token_program"],
+      "args": []
+    }
+  ]
+}

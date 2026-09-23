@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kerb App</title>
-<meta name="description" content="Kerb demo shell. Demo data only.">
+<meta name="description" content="Kerb app for Solana. Demo data, or your wallet read only. Nothing is signed or sent.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Kerb App">
-<meta property="og:description" content="Kerb demo shell. Demo data only.">
+<meta property="og:description" content="Kerb app for Solana. Demo data, or your wallet read only. Nothing is signed or sent.">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/app">
 <link rel="canonical" href="" data-site-url="/app">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs">Docs</a>
     </div>
 
@@ -99,18 +99,18 @@
               </div>
 
               <div class="field" data-token-address-field hidden>
-                <label class="label" for="f-token-address">Token address</label>
+                <label class="label" for="f-token-address">Token mint</label>
                 <input class="input-well" id="f-token-address" data-field="tokenAddress" type="text"
-                       inputmode="text" autocomplete="off" spellcheck="false" placeholder="0x"
+                       inputmode="text" autocomplete="off" spellcheck="false" placeholder="Mint address"
                        aria-describedby="token-address-hint">
-                <span class="field-hint" id="token-address-hint" data-token-address-hint>Paste the ERC-20 contract address.</span>
+                <span class="field-hint" id="token-address-hint" data-token-address-hint>Paste the SPL token mint address.</span>
               </div>
 
               <div class="field">
                 <label class="label" for="f-to">To</label>
                 <input class="input-well" id="f-to" data-field="to" type="text" inputmode="text"
-                       autocomplete="off" spellcheck="false" placeholder="0x" aria-describedby="to-hint">
-                <span class="field-hint" id="to-hint" data-to-hint>Paste an address to check your list.</span>
+                       autocomplete="off" spellcheck="false" placeholder="Solana address" aria-describedby="to-hint">
+                <span class="field-hint" id="to-hint" data-to-hint>Paste a Solana address to check your list.</span>
               </div>
 
               <div class="field">
@@ -134,12 +134,17 @@
                 <div class="ledger-row">
                   <span class="k">To</span>
                   <span class="lead" aria-hidden="true"></span>
-                  <code class="v" data-review="to"></code>
+                  <code class="v" data-review="to" data-address></code>
                 </div>
                 <div class="ledger-row">
                   <span class="k">Amount</span>
                   <span class="lead" aria-hidden="true"></span>
                   <span class="v" data-review="amount"></span>
+                </div>
+                <div class="ledger-row" data-review-route-row hidden>
+                  <span class="k">Route</span>
+                  <span class="lead" aria-hidden="true"></span>
+                  <span class="v" data-review="route"></span>
                 </div>
               </div>
 
@@ -157,6 +162,8 @@
                 <p class="send-caption">Cancel anytime before this closes.</p>
               </div>
 
+              <p class="send-caption" data-review-note role="status" hidden></p>
+
               <div class="send-actions">
                 <button type="button" class="btn-ghost btn--md" data-action="back">Back</button>
                 <button type="button" class="btn-solid btn--md" data-action="confirm">Confirm</button>
@@ -169,7 +176,7 @@
                 <div class="ledger-row">
                   <span class="k">To</span>
                   <span class="lead" aria-hidden="true"></span>
-                  <code class="v" data-holding="to"></code>
+                  <code class="v" data-holding="to" data-address></code>
                 </div>
                 <div class="ledger-row">
                   <span class="k">Amount</span>
@@ -178,7 +185,7 @@
                 </div>
               </div>
 
-              <div class="kwin" data-kerb-window data-dwell="20" data-autostart="false" data-demo-window>
+              <div class="kwin" data-kerb-window data-dwell="20" data-autostart="false">
                 <div class="kwin-row">
                   <span class="label" data-kwin-label>Holding</span>
                   <span class="kwin-time" data-kwin-time>00:20</span>
@@ -189,21 +196,6 @@
                 </div>
               </div>
 
-              <!-- Live mode replaces the demo countdown with the real one. The
-                   demo widget animates a fixed twenty seconds, which would be a
-                   lie about a window measured in minutes or days. -->
-              <div class="ledger" data-live-window hidden>
-                <div class="ledger-row">
-                  <span class="k">Opens at</span>
-                  <span class="lead" aria-hidden="true"></span>
-                  <span class="v" data-holding="releaseText"></span>
-                </div>
-                <div class="ledger-row">
-                  <span class="k">Time left</span>
-                  <span class="lead" aria-hidden="true"></span>
-                  <span class="v" data-holding="countdown" data-release-at="0"></span>
-                </div>
-              </div>
               <p class="send-caption">Cancel anytime before this closes.</p>
 
               <div class="send-actions">
@@ -223,7 +215,7 @@
                 <div class="ledger-row">
                   <span class="k">To</span>
                   <span class="lead" aria-hidden="true"></span>
-                  <code class="v" data-settled="to"></code>
+                  <code class="v" data-settled="to" data-address></code>
                 </div>
                 <div class="ledger-row">
                   <span class="k">Amount</span>
@@ -240,16 +232,6 @@
           </div>
         </section>
 
-        <div class="wallet-banner" data-wallet-banner hidden></div>
-
-        <section class="contacts" data-pendings-section hidden aria-labelledby="pendings-title">
-          <div class="section-label">
-            <span class="label" id="pendings-title">[ Waiting ]</span>
-          </div>
-          <ul class="cells contacts-list" data-pendings></ul>
-          <p class="contacts-empty" data-pendings-empty hidden>Nothing waiting.</p>
-        </section>
-
         <section class="contacts" aria-labelledby="contacts-title">
           <div class="section-label">
             <span class="label" id="contacts-title">[ Your list ]</span>
@@ -259,8 +241,8 @@
         </section>
 
         <p class="app-notice">
-          Demo data. The wallet connects for real; sending, cancelling and
-          settling still run against demo state and sign nothing.
+          Demo data. Nothing is signed or sent. Connect a Solana wallet to
+          preview a send with your own balances.
         </p>
 
       </div>

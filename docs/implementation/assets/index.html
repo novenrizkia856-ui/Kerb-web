@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Assets | Kerb docs</title>
-<meta name="description" content="Kerb handles the native asset and ERC20 tokens. There is no allowlist and no blocklist. address(0) means native, anything else is treated as an ERC20.">
+<meta name="description" content="Kerb handles SOL and SPL tokens, under both the classic SPL Token program and Token-2022. There is no allowlist and no blocklist. The all zero key in the m">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Assets | Kerb docs">
-<meta property="og:description" content="Kerb handles the native asset and ERC20 tokens. There is no allowlist and no blocklist. address(0) means native, anything else is treated as an ERC20.">
+<meta property="og:description" content="Kerb handles SOL and SPL tokens, under both the classic SPL Token program and Token-2022. There is no allowlist and no blocklist. The all zero key in the m">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs/implementation/assets">
 <link rel="canonical" href="" data-site-url="/docs/implementation/assets">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
+      <a class="nav-link panel-hover" href="/#program">Program</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets" aria-current="page">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -130,9 +130,11 @@
             <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Implementation</span><span class="sep">/</span><span>Assets</span></div>
             <div class="docs-prose">
 <h1 id="assets">Assets</h1>
-<p>Kerb handles the native asset and ERC20 tokens. There is no allowlist and no
-blocklist. <code>address(0)</code> means native, anything else is treated as an ERC20.</p>
-<h2 id="native">Native<a class="headerlink" href="#native" title="Permanent link">#</a></h2>
+<p>Kerb handles SOL and SPL tokens, under both the classic SPL Token program and
+Token-2022. There is no allowlist and no blocklist. The all zero key in the mint
+position means SOL; anything else must be a mint owned by one of the two token
+programs.</p>
+<h2 id="sol">SOL<a class="headerlink" href="#sol" title="Permanent link">#</a></h2>
 <div class="docs-table-wrap"><table>
 <thead>
 <tr>
@@ -143,56 +145,41 @@ blocklist. <code>address(0)</code> means native, anything else is treated as an 
 <tbody>
 <tr>
 <td><code>send</code>, straight through</td>
-<td><code>msg.value</code> must equal <code>amount</code>, forwarded to the recipient with a full gas <code>call</code>. A failure reverts.</td>
+<td>A system transfer from the sender's wallet to the recipient.</td>
 </tr>
 <tr>
 <td><code>send</code>, new recipient</td>
-<td><code>msg.value</code> must equal <code>amount</code>, held by the contract.</td>
+<td>A system transfer into the hold account, where the lamports sit above its rent deposit.</td>
 </tr>
 <tr>
 <td><code>cancel</code></td>
-<td>Pushed back to the sender. A failure reverts.</td>
+<td>Debited from the hold, credited to the sender.</td>
 </tr>
 <tr>
 <td><code>settle</code></td>
-<td>Pushed to the recipient. A failure credits <code>claimable</code> instead of reverting.</td>
+<td>Debited from the hold, credited to the recipient.</td>
 </tr>
 <tr>
-<td><code>claim</code></td>
-<td>Pushed to the caller. A failure reverts.</td>
-</tr>
-<tr>
-<td>bare transfer to the contract</td>
-<td><code>receive()</code> reverts with <code>NativeNotAccepted</code>.</td>
+<td>lamports sent straight to a hold address</td>
+<td>Untracked, and returned to the sender when the hold closes, with its rent.</td>
 </tr>
 </tbody>
 </table></div>
-<p><code>ValueMismatch</code> is raised when <code>msg.value != amount</code> on a native send, and
-<code>NativeNotAccepted</code> when value is attached to an ERC20 send. Both are cheap
-checks that prevent value entering the contract without a hold attached to it,
-which would violate the solvency invariant with no way to recover it.</p>
-<h2 id="why-settle-falls-back-and-the-others-do-not">Why settle falls back and the others do not<a class="headerlink" href="#why-settle-falls-back-and-the-others-do-not" title="Permanent link">#</a></h2>
-<p>A recipient can be a contract that reverts on receipt, whether by design, by
-running out of gas in its receive hook, or by being broken. If <code>settle</code> reverted
-in that case, the hold could never be resolved: the window has closed so
-<code>cancel</code> is illegal, and <code>settle</code> fails forever. The funds would be stuck with
-no path out and no administrator to recover them.</p>
-<p>So <code>settle</code> uses the pull pattern as a fallback:</p>
-<pre><code class="language-solidity">bool delivered = _tryPushNative(h.recipient, h.amount);
-if (!delivered) _claimable[h.recipient][address(0)] += h.amount;
-</code></pre>
-<p>and emits <code>Settled(..., delivered: false)</code> so an interface can tell the
-recipient to call <code>claim</code>.</p>
-<p><code>cancel</code> and <code>claim</code> do not fall back, because in both the caller is the party
-receiving the funds and is present in the transaction. Reverting tells them
-something is wrong. Silently parking the money in a balance they then have to
-discover would be worse.</p>
-<p>The straight through path in <code>send</code> also does not fall back, for the same
-reason: the sender is present and can react.</p>
-<h2 id="erc20">ERC20<a class="headerlink" href="#erc20" title="Permanent link">#</a></h2>
-<p>All token movement goes through a <code>SafeERC20</code> style wrapper that tolerates
-tokens which return nothing instead of a boolean, and reverts with
-<code>TransferFailed</code> when a token returns false.</p>
+<p>A program can always debit an account it owns and credit any writable account,
+so a SOL settlement has only two ways to fail, and <code>send</code> closes both before a
+hold exists:</p>
+<p><strong>The recipient is an executable account.</strong> The runtime refuses to change a
+program account's balance. <code>send</code> fails with <code>RecipientExecutable</code>.</p>
+<p><strong>The recipient would be left below the rent exempt minimum.</strong> An account that
+holds nothing and receives less than 890,880 lamports would end up neither empty
+nor rent exempt, and the runtime rejects that. <code>send</code> requires every SOL hold to
+be at least that amount, <code>BelowRentExempt</code> otherwise, so any recipient ends up
+exempt.</p>
+<p>So a SOL settlement cannot be refused, and SOL needs no pull fallback.</p>
+<h2 id="spl-tokens">SPL tokens<a class="headerlink" href="#spl-tokens" title="Permanent link">#</a></h2>
+<p>All token movement uses <code>transfer_checked</code>, which carries the mint and its
+decimals, so a mismatched mint or a wrong decimals assumption fails rather than
+moving the wrong thing.</p>
 <div class="docs-table-wrap"><table>
 <thead>
 <tr>
@@ -203,114 +190,128 @@ tokens which return nothing instead of a boolean, and reverts with
 <tbody>
 <tr>
 <td><code>send</code>, straight through</td>
-<td><code>safeTransferFrom(sender, recipient, amount)</code>, the contract never holds it</td>
+<td>sender's token account to the recipient's, signed by the sender. The program never holds it.</td>
 </tr>
 <tr>
 <td><code>send</code>, new recipient</td>
-<td><code>safeTransferFrom(sender, address(this), amount)</code></td>
+<td>sender's token account to the hold's vault, signed by the sender</td>
 </tr>
 <tr>
 <td><code>cancel</code></td>
-<td><code>safeTransfer(sender, amount)</code></td>
+<td>vault to the sender's token account, signed by the hold PDA</td>
 </tr>
 <tr>
 <td><code>settle</code></td>
-<td><code>safeTransfer(recipient, amount)</code></td>
+<td>vault to the recipient's associated token account, signed by the hold PDA, creating that account if it is missing</td>
+</tr>
+<tr>
+<td><code>settle</code>, recipient account frozen</td>
+<td>vault to a claim vault for the recipient, signed by the hold PDA</td>
 </tr>
 <tr>
 <td><code>claim</code></td>
-<td><code>safeTransfer(caller, amount)</code></td>
+<td>claim vault to any token account the recipient owns, signed by the claim PDA</td>
 </tr>
 </tbody>
 </table></div>
-<h3 id="fee-on-transfer-tokens">Fee on transfer tokens<a class="headerlink" href="#fee-on-transfer-tokens" title="Permanent link">#</a></h3>
-<p>A token may deliver less than was requested. On the hold path the amount stored
-is the balance actually received:</p>
-<pre><code class="language-solidity">uint256 before   = IERC20(asset).balanceOf(address(this));
-IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
-uint256 received = IERC20(asset).balanceOf(address(this)) - before;
-if (received == 0) revert ZeroAmount();
+<h3 id="why-settle-falls-back-and-the-others-do-not">Why settle falls back and the others do not<a class="headerlink" href="#why-settle-falls-back-and-the-others-do-not" title="Permanent link">#</a></h3>
+<p>A mint with a freeze authority can freeze any token account. If the recipient's
+account is frozen at settlement, a transfer into it fails, and a failed
+transfer aborts the whole transaction. The hold could then never be resolved:
+the window has closed so <code>cancel</code> is illegal, and <code>settle</code> fails forever.</p>
+<p>So <code>settle</code> checks the recipient's account state first, and when it is frozen
+moves the tokens to a claim account keyed by the recipient and mint, emitting
+<code>Settled { delivered: false }</code>. The recipient can <code>claim</code> them into any other
+account they own, which may not be frozen.</p>
+<p><code>cancel</code> and <code>claim</code> do not fall back, because in both the signer is the party
+receiving the funds and is present in the transaction. Failing tells them
+something is wrong. Silently parking the money somewhere they then have to
+discover would be worse.</p>
+<h3 id="transfer-fees">Transfer fees<a class="headerlink" href="#transfer-fees" title="Permanent link">#</a></h3>
+<p>A Token-2022 mint with the transfer fee extension withholds a fee on every
+transfer. On the hold path the amount stored is what actually arrived in the
+vault:</p>
+<pre><code class="language-rust">let before = ctx.accounts.vault.amount;
+token_transfer_checked(/* sender -&gt; vault */)?;
+ctx.accounts.vault.reload()?;
+let received = ctx.accounts.vault.amount - before;
+require!(received &gt; 0, KerbError::ZeroAmount);
 </code></pre>
-<p>Recording the requested amount instead would leave the contract owing more than
-it holds the first time such a token was used, breaking solvency invariant 3.</p>
-<p>The straight through path does not need this, because the token moves directly
-between two external accounts and the contract is never in the middle.</p>
-<p><strong>Consequence to document for users.</strong> A held transfer of a fee on transfer
-token settles for slightly less than was sent. Cancelling returns the reduced
-amount, not the original, because the fee was taken by the token on the way in
-and Kerb never had it.</p>
-<h3 id="rebasing-tokens">Rebasing tokens<a class="headerlink" href="#rebasing-tokens" title="Permanent link">#</a></h3>
-<p>A token whose balances change without transfers, such as a positive rebase, will
-drift away from the amount recorded in the hold. Kerb stores an absolute amount,
-not a share, so:</p>
-<ul>
-<li>A positive rebase leaves surplus in the contract that nobody can withdraw.
-  There is no sweep function and no owner, so it stays there.</li>
-<li>A negative rebase can make the contract unable to pay out a hold in full. The
-  transfer reverts and the hold stays pending until enough balance exists.</li>
-</ul>
-<p>This is a known limitation and is not worked around. Supporting rebasing tokens
-correctly means storing shares and tracking a per token index, which is a large
-amount of machinery for a narrow case. <strong>Do not use Kerb with rebasing tokens.</strong></p>
-<h3 id="tokens-with-unusual-behaviour">Tokens with unusual behaviour<a class="headerlink" href="#tokens-with-unusual-behaviour" title="Permanent link">#</a></h3>
+<p>Recording the requested amount instead would leave the hold owing more than its
+vault holds the first time such a mint was used, breaking invariant 3.</p>
+<p><strong>Consequence to document for users.</strong> The fee is taken on every hop. A held
+transfer of such a token pays it into escrow and again on the way out, so the
+recipient receives less than a direct transfer would deliver, and a cancel
+returns less than was sent. Kerb never has the difference; the mint withholds it.</p>
+<h3 id="token-2022-extensions">Token-2022 extensions<a class="headerlink" href="#token-2022-extensions" title="Permanent link">#</a></h3>
 <div class="docs-table-wrap"><table>
 <thead>
 <tr>
-<th>Token behaviour</th>
+<th>Extension</th>
 <th>Kerb outcome</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Returns nothing on transfer</td>
-<td>Handled by the SafeERC20 wrapper</td>
+<td>Transfer fee</td>
+<td>Supported, as above</td>
 </tr>
 <tr>
-<td>Returns false on failure</td>
-<td><code>TransferFailed</code></td>
+<td>Metadata, metadata pointer, group, interest bearing display</td>
+<td>Irrelevant to movement, supported</td>
 </tr>
 <tr>
-<td>Fee on transfer</td>
-<td>Handled, amount recorded is what arrived</td>
+<td>Immutable owner, memo required, CPI guard on the sender's account</td>
+<td>Supported, or fails cleanly at <code>send</code> with the token program's error</td>
 </tr>
 <tr>
-<td>Rebasing</td>
-<td>Not supported, see above</td>
+<td>Default account state frozen</td>
+<td>The vault would be created frozen, so <code>send</code> fails. Nothing is lost.</td>
 </tr>
 <tr>
-<td>Blocklists a recipient</td>
-<td><code>settle</code> reverts, hold stays pending until unblocked</td>
+<td>Transfer hook</td>
+<td><strong>Refused</strong> on the hold path with <code>UnsupportedMint</code>. A hook is arbitrary code run on every transfer, and one that later refuses the vault's transfer strands the hold.</td>
 </tr>
 <tr>
-<td>Reverts on zero amount transfer</td>
-<td>Unreachable, <code>ZeroAmount</code> is checked first</td>
+<td>Permanent delegate</td>
+<td><strong>Refused</strong> on the hold path. A permanent delegate can move tokens out of any account of that mint, including the vault, breaking invariant 3.</td>
 </tr>
 <tr>
-<td>More than one address for the same token</td>
-<td>Two different assets as far as Kerb is concerned, and two different holds</td>
+<td>Confidential transfer</td>
+<td><strong>Refused</strong> on the hold path. The vault cannot see the amount it received.</td>
+</tr>
+<tr>
+<td>Non transferable</td>
+<td>Cannot be sent at all; the token program refuses.</td>
 </tr>
 </tbody>
 </table></div>
-<p>The blocklist row is worth noting. A token that refuses to move to a sanctioned
-or frozen recipient will make <code>settle</code> revert, and there is no fallback for
-ERC20 because crediting <code>claimable</code> would not help, the token still refuses to
-move. The hold stays pending indefinitely. The sender cannot cancel because the
-window closed. This is a genuine trap and there is currently no clean answer to
-it.</p>
-<p><strong>Open question.</strong> Whether ERC20 settlement should also use a try and credit
-pattern, so a blocked recipient leaves a claimable balance rather than a stuck
-hold. It does not solve the underlying problem, the recipient still cannot
-receive, but it does move the funds out of the hold and into a balance that can
-be claimed later if the block is lifted. Leaning toward adopting it. Not yet
-specified.</p>
+<p>The refusals apply only to the hold path, where Kerb has to hold the tokens
+safely for the length of the window. The straight through path moves tokens
+directly between two wallets that already chose to hold that mint, and Kerb is
+not in the middle.</p>
+<h3 id="freeze-authority-on-the-vault">Freeze authority on the vault<a class="headerlink" href="#freeze-authority-on-the-vault" title="Permanent link">#</a></h3>
+<p>This is the trap, and it should be stated plainly. A mint's freeze authority can
+freeze <strong>any</strong> account of that mint, the vault included. Many widely held mints,
+stablecoins among them, keep a freeze authority.</p>
+<p>If the issuer freezes a hold's vault, the tokens cannot move out of it. <code>cancel</code>
+fails, <code>settle</code> fails, and the claim fallback does not help, because the frozen
+account is the source, not the destination. The hold stays open until the
+issuer thaws the vault, possibly forever.</p>
+<p>Kerb cannot prevent this without refusing every mint that has a freeze
+authority, which would exclude most of the tokens people actually send. It is
+accepted and documented instead. See <a href="/docs/reference/limits">Honest limits</a>.</p>
+<p><strong>Open question.</strong> Whether the hold path should refuse mints with a freeze
+authority unless the sender opts in explicitly. It would make the trap a choice
+rather than a surprise. Not yet specified.</p>
 <h2 id="decimals">Decimals<a class="headerlink" href="#decimals" title="Permanent link">#</a></h2>
-<p>Kerb never reads <code>decimals()</code> and never scales an amount. Values are stored and
-moved exactly as given. Formatting is entirely the interface concern, and the
-web configuration carries <code>token.decimals</code> for display only.</p>
+<p>Kerb never scales an amount. Values are stored and moved exactly as given, in
+the mint's smallest unit, and <code>transfer_checked</code> confirms the decimals the
+client assumed. Formatting is entirely the interface's concern.</p>
 <p>Next: <a href="/docs/implementation/security">Security</a>.</p>
             </div>
 <nav class="docs-pager" aria-label="Page">
-<a class="panel panel-hover docs-pager-link" href="/docs/implementation/lens"><span class="label">Previous</span><span class="docs-pager-title">KerbLens</span></a>
+<a class="panel panel-hover docs-pager-link" href="/docs/implementation/lens"><span class="label">Previous</span><span class="docs-pager-title">Reading state</span></a>
 <a class="panel panel-hover docs-pager-link docs-pager-link--next" href="/docs/implementation/security"><span class="label">Next</span><span class="docs-pager-title">Security</span></a>
 </nav>
           </article>
@@ -318,12 +319,12 @@ web configuration carries <code>token.decimals</code> for display only.</p>
 
 <aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
 <ul>
-<li><a href="#native">Native</a></li>
+<li><a href="#sol">SOL</a></li>
+<li><a href="#spl-tokens">SPL tokens</a><ul>
 <li><a href="#why-settle-falls-back-and-the-others-do-not">Why settle falls back and the others do not</a></li>
-<li><a href="#erc20">ERC20</a><ul>
-<li><a href="#fee-on-transfer-tokens">Fee on transfer tokens</a></li>
-<li><a href="#rebasing-tokens">Rebasing tokens</a></li>
-<li><a href="#tokens-with-unusual-behaviour">Tokens with unusual behaviour</a></li>
+<li><a href="#transfer-fees">Transfer fees</a></li>
+<li><a href="#token-2022-extensions">Token-2022 extensions</a></li>
+<li><a href="#freeze-authority-on-the-vault">Freeze authority on the vault</a></li>
 </ul>
 </li>
 <li><a href="#decimals">Decimals</a></li>
