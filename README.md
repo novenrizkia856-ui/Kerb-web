@@ -84,6 +84,11 @@ without a rebuild.
 Until then the token strip reads `Coming Soon` and the contract rows read
 `Not deployed`. Those are the intended empty states, not placeholders.
 
+Launching the token is one line: set `token.address` in
+`config/kerb.config.json`. Empty or `null` reads `Coming Soon`. Anything else
+shows in the strip at once, copyable, with an explorer link when it is a real
+address.
+
 ## Deploy
 
 Vercel, static.

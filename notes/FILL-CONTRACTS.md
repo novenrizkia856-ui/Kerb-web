@@ -23,7 +23,7 @@ as an empty string. The `no-cache, must-revalidate` header on `/config/*` in
 
 | Field | Empty | Filled |
 |---|---|---|
-| `token.address` | The strip at the very top reads `Coming Soon`. The copy button is present but inert: clicking it announces `Not live yet` and copies nothing. No explorer link. | The strip reads the truncated address, for example `0x71C7…976F`. Copy is active and copies the full address, announcing `Copied`. The explorer link appears. |
+| `token.address` | Empty or `null`: the strip at the very top reads `Coming Soon`. The copy button is present but inert: clicking it announces `Not live yet` and copies nothing. No explorer link. | Any other value shows at once. The strip reads it truncated, for example `0x71C7…976F`. Copy is active and copies the full value, announcing `Copied`. The explorer link appears when the value is a real address. |
 | `contracts.core.address` | The Core row reads `Not deployed`. No copy, no explorer link. | The row reads the truncated address, with an active copy button and an explorer link. |
 | `contracts.lens.address` | Same as Core. | Same as Core. |
 | `chain.explorerBaseUrl` | No explorer link appears anywhere, even when an address is set. | Explorer links appear next to every filled address, built as `explorerBaseUrl + explorerAddressPath + address`. |

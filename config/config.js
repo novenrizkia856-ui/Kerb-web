@@ -28,6 +28,16 @@ export function isAddress(value) {
   return typeof value === 'string' && ADDRESS_SHAPE.test(value);
 }
 
+/** What the page shows for the token CA. Launch day is one edit to
+    token.address, so anything written there is shown as written, valid
+    address or not. Null or blank reads `Coming Soon`. The explorer link still
+    checks the shape for itself. */
+export function tokenText(config) {
+  const value = config?.token?.address;
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
 /* --- fallback ---------------------------------------------------------------
    Used when the config file cannot be read at all. Every address stays empty so
    the page renders its `Coming Soon` and `Not deployed` states rather than
@@ -67,7 +77,11 @@ export function validate(config) {
 
   for (const [path, value] of addressFields) {
     if (value === '' || value === null || value === undefined) continue;
-    if (!isAddress(value)) warn(`${path} is not a valid address: ${String(value)}`);
+    if (isAddress(value)) continue;
+    /* The token is still shown as written. Only its explorer link stays off
+       until it is a real address. */
+    const note = path === 'token.address' ? ', shown as written with no explorer link' : '';
+    warn(`${path} is not a valid address${note}: ${String(value)}`);
   }
 
   const chainId = config?.chain?.id;
@@ -135,15 +149,16 @@ function show(el, visible) {
  * empty  value reads `Coming Soon`, copy button present in a disabled state,
  *        clicking it announces `Not live yet` and copies nothing, explorer link
  *        hidden.
- * valid  value reads truncated, copy button active and copies the full address,
- *        announces `Copied`, explorer link shown.
+ * filled anything in token.address reads truncated, copy button active and
+ *        copies the full value, announces `Copied`. The explorer link shows
+ *        only when the value is a real address.
  */
 function renderTokenStrip(config, root) {
   const strip = root.querySelector('[data-token-strip]');
   if (!strip) return;
 
-  const address = config?.token?.address ?? '';
-  const live = isAddress(address);
+  const address = tokenText(config);
+  const live = Boolean(address);
 
   const valueEl = strip.querySelector('[data-token-value]');
   const copyEl = strip.querySelector('[data-token-copy]');
@@ -151,6 +166,8 @@ function renderTokenStrip(config, root) {
 
   if (valueEl) {
     valueEl.textContent = live ? truncate(address) : COPY.tokenEmpty;
+    if (live) valueEl.title = address;
+    else valueEl.removeAttribute('title');
   }
 
   if (copyEl) {
@@ -167,7 +184,7 @@ function renderTokenStrip(config, root) {
   if (linkEl) {
     const url = explorerAddressUrl(config, address);
     show(linkEl, live && Boolean(url));
-    if (url) linkEl.setAttribute('href', url);
+    linkEl.setAttribute('href', url);
   }
 }
 
