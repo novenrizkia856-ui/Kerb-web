@@ -106,7 +106,7 @@ it up without a rebuild.
 | `SOLANA_NETWORK` | `mainnet-beta` |
 | `SOLANA_RPC_URL` | empty. Set it before launch: the public mainnet endpoint refuses browsers |
 | `EXPLORER_BASE_URL` | `https://explorer.solana.com` |
-| `KERB_TOKEN_MINT` | empty, the strip reads `Coming Soon` |
+| `KERB_TOKEN_MINT` | empty, the strip reads `Coming Soon`. Anything written here shows at once |
 | `KERB_PROGRAM_ID` | empty, the Program row reads `Not deployed` |
 | `TREASURY_ADDRESS` | empty |
 

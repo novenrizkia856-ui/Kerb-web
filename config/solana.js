@@ -85,6 +85,16 @@ export function tokenMint(config) {
   return isPublicKey(value) ? value : '';
 }
 
+/** What the page shows for the token mint. Launch day is one edit to
+    KERB_TOKEN_MINT, so anything written there is shown as written, valid key
+    or not. Null or blank reads `Coming Soon`. Wallet code keeps tokenMint,
+    which only ever returns a real key, and the explorer link checks for itself. */
+export function tokenMintText(config) {
+  const value = solanaConfig(config).KERB_TOKEN_MINT;
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
 export function tokenSymbol(config) {
   return solanaConfig(config).KERB_TOKEN_SYMBOL || 'KERB';
 }

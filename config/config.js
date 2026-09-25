@@ -11,7 +11,7 @@ import {
   isPublicKey,
   networkInfo,
   programId,
-  tokenMint,
+  tokenMintText,
 } from './solana.js';
 
 export { explorerAddressUrl };
@@ -67,7 +67,11 @@ export function validate(config) {
   for (const key of ['KERB_TOKEN_MINT', 'KERB_PROGRAM_ID', 'TREASURY_ADDRESS']) {
     const value = solana[key];
     if (value === '' || value === null || value === undefined) continue;
-    if (!isPublicKey(value)) warn(`solana.${key} is not a valid Solana public key: ${String(value)}`);
+    if (isPublicKey(value)) continue;
+    /* The mint is still shown as written. Only its explorer link and the
+       wallet balance stay off until it is a real key. */
+    const note = key === 'KERB_TOKEN_MINT' ? ', shown as written with no explorer link' : '';
+    warn(`solana.${key} is not a valid Solana public key${note}: ${String(value)}`);
   }
 
   if (!NETWORKS[solana.SOLANA_NETWORK]) {
@@ -134,14 +138,15 @@ export function markAddress(el, holdsAddress) {
  * empty  value reads `Coming Soon`, copy button present in a disabled state,
  *        clicking it announces `Not live yet` and copies nothing, explorer link
  *        hidden.
- * valid  value reads truncated, copy button active and copies the full mint
- *        address, announces `Copied`, explorer link shown.
+ * filled anything in KERB_TOKEN_MINT reads truncated, copy button active and
+ *        copies the full value, announces `Copied`. The explorer link shows
+ *        only when the value is a real Solana key.
  */
 function renderTokenStrip(config, root) {
   const strip = root.querySelector('[data-token-strip]');
   if (!strip) return;
 
-  const address = tokenMint(config);
+  const address = tokenMintText(config);
   const live = Boolean(address);
 
   const valueEl = strip.querySelector('[data-token-value]');
@@ -191,7 +196,7 @@ function renderProgram(config, root) {
 
   const entries = {
     program: { address: programId(config), empty: COPY.programEmpty, label: 'Copy program ID' },
-    mint: { address: tokenMint(config), empty: COPY.tokenEmpty, label: 'Copy token mint address' },
+    mint: { address: tokenMintText(config), empty: COPY.tokenEmpty, label: 'Copy token mint address' },
   };
 
   section.querySelectorAll('[data-account]').forEach((row) => {
