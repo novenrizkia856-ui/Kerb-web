@@ -12,8 +12,3 @@ content/
 
 # Authoring tooling. It runs on a developer machine, never during deploy.
 tools/
-
-# The env template and any local env file. The values reach the site through
-# config/kerb.config.json, never from these files.
-.env
-.env.example

@@ -2,15 +2,14 @@
 
 ## Constants
 
-These are compiled into the Kerb program as `const` and cannot be changed by
-anybody once the program's upgrade authority is revoked, including whoever
-deployed it. There is no setter, no governance and no config account that could
-introduce one.
+These are compiled into `KerbCore` as `constant` and cannot be changed by
+anybody, including whoever deploys it. There is no setter, no governance and no
+upgrade path that could introduce one.
 
-```rust
-pub const DEFAULT_DWELL: u64 = 900;      // 15 minutes
-pub const MIN_DWELL: u64 = 60;           // 1 minute
-pub const MAX_DWELL: u64 = 604_800;      // 7 days
+```solidity
+uint64 public constant DEFAULT_DWELL = 900;      // 15 minutes
+uint64 public constant MIN_DWELL     = 60;       // 1 minute
+uint64 public constant MAX_DWELL     = 604800;   // 7 days
 ```
 
 | Constant | Seconds | Why this value |
@@ -20,38 +19,34 @@ pub const MAX_DWELL: u64 = 604_800;      // 7 days
 | `MAX_DWELL` | 604800 | A week is the longest a hold can sit before the recipient can be paid. Beyond that the escrow stops being a speed bump and starts being a liability. |
 
 The same three values appear in the web configuration under `defaults`, where
-they are used for display and validation only. The program is authoritative.
+they are used for display and validation only. The contract is authoritative.
 
 ## Per sender dwell
 
-```rust
-pub fn set_dwell(ctx: Context<SetDwell>, dwell_seconds: u64) -> Result<()>;
+```solidity
+function setDwell(uint64 seconds_) external;
+function dwellOf(address sender) public view returns (uint64);
 ```
 
-`set_dwell` writes the signer's settings account, creating it on first use. It
-fails with `DwellOutOfRange` unless `MIN_DWELL <= dwell_seconds <= MAX_DWELL`,
-or `dwell_seconds == 0`.
+`setDwell` writes `_dwell[msg.sender]`. It reverts with `DwellOutOfRange` unless
+`MIN_DWELL <= seconds_ <= MAX_DWELL`, or `seconds_ == 0`.
 
 Passing zero clears the override and returns the sender to the protocol default.
-The settings account is closed in that case and its rent returned, since an
-absent account and a zero override mean the same thing. The effective dwell is
-resolved like this, on chain and off:
+`dwellOf` resolves it:
 
-```rust
-fn dwell_of(settings: Option<&Settings>) -> u64 {
-    match settings {
-        Some(s) if s.dwell_seconds != 0 => s.dwell_seconds,
-        _ => DEFAULT_DWELL,
-    }
+```solidity
+function dwellOf(address sender) public view returns (uint64) {
+    uint64 d = _dwell[sender];
+    return d == 0 ? DEFAULT_DWELL : d;
 }
 ```
 
-Emits `DwellSet { sender, dwell_seconds }`.
+Emits `DwellSet(sender, seconds_)`.
 
 ## When the dwell is read
 
 The dwell is read **once**, at the moment a hold is created, and baked into
-`release_at`. Changing your dwell afterwards does not move any hold that is
+`releaseAt`. Changing your dwell afterwards does not move any hold that is
 already pending.
 
 This matters. If the dwell were read at settle time instead, a sender could
@@ -60,29 +55,22 @@ into a griefing tool. Reading it once at creation means the recipient knows the
 release time from the moment the hold appears and it cannot move.
 
 ```
-send        dwell_of(sender) is read here, release_at is fixed
+send()      dwellOf(sender) is read here, releaseAt is fixed
    |
-set_dwell   no effect on the hold above
+setDwell()  no effect on the hold above
    |
-settle      uses the release_at stored earlier
+settle()    uses the releaseAt stored earlier
 ```
 
 ## Asset parameters
 
-Almost none. Kerb has no per mint configuration: no allowlist, no blocklist, no
-decimals table, no maximum amount. Any mint owned by the SPL Token program or
-the Token-2022 program can be sent, subject to the extension rules in
-[Assets](../implementation/assets.md), and SOL is addressed with the all zero
-key.
+There are none. Kerb has no per asset configuration: no allowlist, no
+blocklist, no decimals table, no minimum amount, no maximum amount. Any address
+that behaves like an ERC20 can be sent, and the native asset is addressed as
+`address(0)`.
 
-There is exactly one minimum, and it is not a price. A SOL hold must be at least
-the rent exempt minimum for an empty account, 890,880 lamports, because a
-smaller amount can fail to land in a recipient account that holds nothing yet,
-and a settlement that cannot land would strand the hold. The runtime sets that
-number, not Kerb.
-
-A value based minimum was considered as a mitigation for the dust trust risk and
-rejected. Setting one requires knowing what a given token is worth, which
+A per asset minimum was considered as a mitigation for the dust trust risk and
+rejected. Setting a minimum requires knowing what a given token is worth, which
 requires a price feed, which requires an oracle. Kerb does not have one and
 adding one would introduce exactly the kind of trusted external dependency the
 protocol is built to avoid.
@@ -98,22 +86,19 @@ settle fee ........... 0
 cancel fee ........... 0
 ```
 
-There is no fee recipient field in the program. Users pay Solana's transaction
-fee to the network, optionally a priority fee, and refundable rent deposits for
-the accounts they create. Nothing goes to Kerb. The absence is structural: there
-is no field to set a fee into and no instruction that could set one. A
-`TREASURY_ADDRESS` exists in the web configuration for the site's own use; the
-program has no knowledge of it.
+There is no fee recipient address in the contract. Users pay gas to the network
+and nothing to Kerb. The absence is structural: there is no field to set a fee
+into and no function that could set one.
 
 ## Summary of what can change after deployment
 
 | Thing | Who can change it | How |
 |---|---|---|
-| Your dwell | you | `set_dwell`, within the fixed bounds |
+| Your dwell | you | `setDwell`, within the fixed bounds |
 | Your trust list | you | by settling a transfer, or by `forget` |
 | Your pending holds | you, and anyone for settle after release | `send`, `cancel`, `settle` |
 | `DEFAULT_DWELL`, `MIN_DWELL`, `MAX_DWELL` | nobody | they are compile time constants |
 | Fees | nobody | there are none to change |
-| Program logic | nobody | the upgrade authority is revoked at deploy |
+| Contract logic | nobody | there is no upgrade path |
 
 Next: [Events and errors](events-and-errors.md).

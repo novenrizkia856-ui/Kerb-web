@@ -286,7 +286,7 @@ SHELL = """<!doctype html>
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#program">Program</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 

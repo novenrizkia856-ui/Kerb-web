@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#program">Program</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -135,31 +135,30 @@ address is held in escrow and can be pulled back by the sender.</p>
 <h2 id="behaviour">Behaviour<a class="headerlink" href="#behaviour" title="Permanent link">#</a></h2>
 <p>When you call <code>send</code> with a recipient that is not on your list:</p>
 <ol>
-<li>The asset leaves your wallet and enters an escrow account owned by the Kerb
-   program.</li>
-<li>A <strong>hold</strong> account is created with a <code>release_at</code> timestamp, which is the
-   cluster clock plus your dwell.</li>
-<li>Until <code>release_at</code>, only you can act on it, and the only thing you can do is
+<li>The asset leaves your wallet and enters <code>KerbCore</code>.</li>
+<li>A <strong>hold</strong> is recorded with a <code>releaseAt</code> timestamp, which is the current
+   block time plus your dwell.</li>
+<li>Until <code>releaseAt</code>, only you can act on it, and the only thing you can do is
    <code>cancel</code>, which returns the full amount to you.</li>
-<li>From <code>release_at</code> onward, only <code>settle</code> is possible, and <strong>anyone</strong> may call
+<li>From <code>releaseAt</code> onward, only <code>settle</code> is possible, and <strong>anyone</strong> may call
    it. Funds reach the recipient and the recipient joins your list.</li>
 </ol>
 <p>When the recipient is already on your list, none of the above happens. The
-transfer executes immediately in a single instruction.</p>
+transfer executes immediately in a single call.</p>
 <h2 id="the-three-timestamps-that-matter">The three timestamps that matter<a class="headerlink" href="#the-three-timestamps-that-matter" title="Permanent link">#</a></h2>
-<pre><code>t0 ................. you sign send
+<pre><code>t0 ................. you call send()
                      asset moves into escrow
                      hold opens
 
-t0 + dwell ......... release_at
+t0 + dwell ......... releaseAt
                      cancel stops being possible
                      settle starts being possible
 
-t_settle ........... anyone sends settle
+t_settle ........... anyone calls settle()
                      asset reaches recipient
                      recipient is appended to your list
 </code></pre>
-<p>Between <code>t0</code> and <code>release_at</code> the funds are yours to reclaim. After <code>release_at</code>
+<p>Between <code>t0</code> and <code>releaseAt</code> the funds are yours to reclaim. After <code>releaseAt</code>
 they are the recipient's to claim. There is no period where both are true and no
 period where neither is.</p>
 <h2 id="why-the-cutoff-is-hard">Why the cutoff is hard<a class="headerlink" href="#why-the-cutoff-is-hard" title="Permanent link">#</a></h2>
@@ -167,7 +166,7 @@ period where neither is.</p>
 making the dwell a minimum wait rather than a deadline. That was rejected. With
 a soft cutoff the recipient never reaches certainty: a transfer that looks
 complete could still be withdrawn because nobody happened to call <code>settle</code> yet.
-A hard cutoff at <code>release_at</code> gives both sides a moment they can point at.</p>
+A hard cutoff at <code>releaseAt</code> gives both sides a moment they can point at.</p>
 <p>The cost of the hard cutoff is that funds can sit unsettled if nobody calls
 <code>settle</code>. That is addressed by making <code>settle</code> permissionless, so the recipient
 never depends on the sender's cooperation, and by having the frontend settle
@@ -199,9 +198,9 @@ automatically. See <a href="/docs/protocol/lifecycle">Transfer lifecycle</a>.</p
 </tr>
 </tbody>
 </table></div>
-<p>Every sender may set their own dwell inside those bounds with <code>set_dwell</code>. The
-bounds are constants compiled into the program and cannot be changed by anyone,
-including the deployer, once the upgrade authority is revoked.</p>
+<p>Every sender may set their own dwell inside those bounds with <code>setDwell</code>. The
+bounds are constants in the contract and cannot be changed by anyone, including
+the deployer.</p>
 <p>The default is fifteen minutes because the attack it defends against is a paste
 from a poisoned history, and that mistake is usually noticed within seconds to
 minutes of sending, when the sender looks at the confirmation or the recipient
@@ -214,7 +213,7 @@ scope.</p>
 <h2 id="what-the-window-does-not-do">What the window does not do<a class="headerlink" href="#what-the-window-does-not-do" title="Permanent link">#</a></h2>
 <p>The window does not evaluate the recipient. Kerb has no opinion about whether an
 address is good. The window exists so that <strong>you</strong> have a chance to form one,
-with the transfer already visible in front of you rather than as forty odd
+with the transfer already visible in front of you rather than as forty
 characters in a text field.</p>
 <p>Next: <a href="/docs/concepts/trust-list">The trust list</a>.</p>
             </div>

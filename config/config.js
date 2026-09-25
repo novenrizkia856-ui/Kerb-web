@@ -1,41 +1,32 @@
 /* config.js
-   The only place the site learns about addresses, networks and links.
+   The only place the site learns about addresses, chains and links.
    Implements brief section 9: the render rules in 9.2, the validator in 9.3 and
    the truncation helper in 9.4. Nothing here throws and nothing here blanks the
    page. Every failure is a console.warn and a safe fallback. */
 
 import { attachCopy } from '../assets/js/copy.js';
-import {
-  NETWORKS,
-  explorerAddressUrl,
-  isPublicKey,
-  networkInfo,
-  programId,
-  tokenMintText,
-} from './solana.js';
-
-export { explorerAddressUrl };
 
 const CONFIG_URL = new URL('./kerb.config.json', import.meta.url);
 
+const ADDRESS_SHAPE = /^0x[a-fA-F0-9]{40}$/;
+
 export const COPY = {
   tokenEmpty: 'Coming Soon',
-  programEmpty: 'Not deployed',
+  contractEmpty: 'Not deployed',
   notLive: 'Not live yet',
   copied: 'Copied',
 };
 
 /* --- 9.4 truncation ---------------------------------------------------------
-   First four characters, the ellipsis character, the last four. The same
-   `ABCD…WXYZ` shape Solana wallets use, so what this page shows is what a
-   wallet popup would show next to it. */
+   First six characters, the ellipsis character, the last four. */
 export function truncate(address) {
   if (typeof address !== 'string' || address.length <= 10) return address ?? '';
-  return `${address.slice(0, 4)}…${address.slice(-4)}`;
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-/** Every address on the site is a Solana public key. */
-export const isAddress = isPublicKey;
+export function isAddress(value) {
+  return typeof value === 'string' && ADDRESS_SHAPE.test(value);
+}
 
 /* --- fallback ---------------------------------------------------------------
    Used when the config file cannot be read at all. Every address stays empty so
@@ -43,49 +34,55 @@ export const isAddress = isPublicKey;
    nothing. */
 const FALLBACK = {
   meta: { productName: 'Kerb', siteUrl: '', ogTitle: 'Kerb', ogDescription: '' },
-  solana: {
-    SOLANA_NETWORK: 'mainnet-beta',
-    SOLANA_RPC_URL: '',
-    EXPLORER_BASE_URL: '',
-    KERB_TOKEN_MINT: '',
-    KERB_TOKEN_SYMBOL: 'KERB',
-    KERB_PROGRAM_ID: '',
-    TREASURY_ADDRESS: '',
+  chain: {
+    id: 0,
+    name: '',
+    rpcUrl: '',
+    explorerBaseUrl: '',
+    explorerAddressPath: '/address/',
+    explorerTxPath: '/tx/',
+    nativeCurrency: { name: '', symbol: '', decimals: 18 },
   },
+  contracts: {
+    core: { address: '', deployBlock: null, verified: false },
+    lens: { address: '', deployBlock: null, verified: false },
+  },
+  token: { address: '', symbol: '', decimals: 18 },
   defaults: { dwellSeconds: 900, minDwellSeconds: 60, maxDwellSeconds: 604800 },
   links: { x: '', github: '', docs: '' },
-  flags: { appEnabled: true, showProgramSection: true },
-  wallet: { enabled: true },
+  flags: { appEnabled: true, appMode: 'mock', showContractsSection: true },
+  wallet: { walletConnectProjectId: '', enabled: true },
 };
 
 /* --- 9.3 validation ---------------------------------------------------------
    One console.warn per failure. Never throws. */
 export function validate(config) {
   const warn = (message) => console.warn(`[kerb.config] ${message}`);
-  const solana = config?.solana ?? {};
 
-  for (const key of ['KERB_TOKEN_MINT', 'KERB_PROGRAM_ID', 'TREASURY_ADDRESS']) {
-    const value = solana[key];
+  const addressFields = [
+    ['token.address', config?.token?.address],
+    ['contracts.core.address', config?.contracts?.core?.address],
+    ['contracts.lens.address', config?.contracts?.lens?.address],
+  ];
+
+  for (const [path, value] of addressFields) {
     if (value === '' || value === null || value === undefined) continue;
-    if (isPublicKey(value)) continue;
-    /* The mint is still shown as written. Only its explorer link and the
-       wallet balance stay off until it is a real key. */
-    const note = key === 'KERB_TOKEN_MINT' ? ', shown as written with no explorer link' : '';
-    warn(`solana.${key} is not a valid Solana public key${note}: ${String(value)}`);
+    if (!isAddress(value)) warn(`${path} is not a valid address: ${String(value)}`);
   }
 
-  if (!NETWORKS[solana.SOLANA_NETWORK]) {
-    warn(
-      `solana.SOLANA_NETWORK must be one of ${Object.keys(NETWORKS).join(', ')}, ` +
-        `received: ${String(solana.SOLANA_NETWORK)}`,
-    );
+  const chainId = config?.chain?.id;
+  if (!Number.isInteger(chainId) || chainId <= 0) {
+    warn(`chain.id must be a positive integer, received: ${String(chainId)}`);
   }
 
-  for (const key of ['EXPLORER_BASE_URL', 'SOLANA_RPC_URL']) {
-    const value = solana[key];
-    if (value && !String(value).startsWith('https://')) {
-      warn(`solana.${key} must start with https:// when set, received: ${String(value)}`);
-    }
+  const explorer = config?.chain?.explorerBaseUrl;
+  if (explorer && !String(explorer).startsWith('https://')) {
+    warn(`chain.explorerBaseUrl must start with https:// when set, received: ${String(explorer)}`);
+  }
+
+  const rpc = config?.chain?.rpcUrl;
+  if (rpc && !String(rpc).startsWith('https://')) {
+    warn(`chain.rpcUrl must start with https:// when set, received: ${String(rpc)}`);
   }
 
   const { dwellSeconds, minDwellSeconds, maxDwellSeconds } = config?.defaults ?? {};
@@ -116,6 +113,15 @@ export async function loadConfig() {
   return cached;
 }
 
+/* --- explorer links -------------------------------------------------------- */
+
+export function explorerAddressUrl(config, address) {
+  const base = config?.chain?.explorerBaseUrl;
+  if (!base || !isAddress(address)) return '';
+  const path = config?.chain?.explorerAddressPath ?? '/address/';
+  return `${String(base).replace(/\/$/, '')}${path}${address}`;
+}
+
 /* --- 9.2 render rules ------------------------------------------------------ */
 
 function show(el, visible) {
@@ -123,31 +129,21 @@ function show(el, visible) {
   el.hidden = !visible;
 }
 
-/** Base58 is case sensitive, so an address must never pick up the uppercase
-    the label styling around it applies. The attribute is only set while the
-    element holds an address, so `Coming Soon` stays in capitals. */
-export function markAddress(el, holdsAddress) {
-  if (!el) return;
-  if (holdsAddress) el.dataset.address = '';
-  else delete el.dataset.address;
-}
-
 /**
- * Token mint strip.
+ * Token CA strip.
  *
  * empty  value reads `Coming Soon`, copy button present in a disabled state,
  *        clicking it announces `Not live yet` and copies nothing, explorer link
  *        hidden.
- * filled anything in KERB_TOKEN_MINT reads truncated, copy button active and
- *        copies the full value, announces `Copied`. The explorer link shows
- *        only when the value is a real Solana key.
+ * valid  value reads truncated, copy button active and copies the full address,
+ *        announces `Copied`, explorer link shown.
  */
 function renderTokenStrip(config, root) {
   const strip = root.querySelector('[data-token-strip]');
   if (!strip) return;
 
-  const address = tokenMintText(config);
-  const live = Boolean(address);
+  const address = config?.token?.address ?? '';
+  const live = isAddress(address);
 
   const valueEl = strip.querySelector('[data-token-value]');
   const copyEl = strip.querySelector('[data-token-copy]');
@@ -155,15 +151,13 @@ function renderTokenStrip(config, root) {
 
   if (valueEl) {
     valueEl.textContent = live ? truncate(address) : COPY.tokenEmpty;
-    markAddress(valueEl, live);
-    if (live) valueEl.title = address;
   }
 
   if (copyEl) {
     copyEl.setAttribute('aria-disabled', String(!live));
     /* The accessible name has to contain the visible text, WCAG 2.5.3. The
        inert state is carried by aria-disabled, not by the name. */
-    copyEl.setAttribute('aria-label', 'Copy token mint address');
+    copyEl.setAttribute('aria-label', 'Copy token address');
     attachCopy(copyEl, () => (live ? address : ''), {
       emptyMessage: COPY.notLive,
       successMessage: COPY.copied,
@@ -178,48 +172,36 @@ function renderTokenStrip(config, root) {
 }
 
 /**
- * On chain rows: the Kerb program and the token mint.
+ * Contract rows.
  *
- * empty  value reads `Not deployed` for the program and `Coming Soon` for the
- *        mint, copy hidden, explorer hidden.
+ * empty  value reads `Not deployed`, copy hidden, explorer hidden.
  * valid  value reads truncated, copy active, explorer shown.
  */
-function renderProgram(config, root) {
-  const section = root.querySelector('[data-program-section]');
+function renderContracts(config, root) {
+  const section = root.querySelector('[data-contracts]');
 
-  if (config?.flags?.showProgramSection === false) {
+  if (config?.flags?.showContractsSection === false) {
     section?.remove();
-    root.querySelectorAll('[data-program-rule], [data-program-label]').forEach((el) => el.remove());
     return;
   }
   if (!section) return;
 
-  const entries = {
-    program: { address: programId(config), empty: COPY.programEmpty, label: 'Copy program ID' },
-    mint: { address: tokenMintText(config), empty: COPY.tokenEmpty, label: 'Copy token mint address' },
-  };
+  section.querySelectorAll('[data-contract]').forEach((row) => {
+    const key = row.dataset.contract;
+    const address = config?.contracts?.[key]?.address ?? '';
+    const live = isAddress(address);
 
-  section.querySelectorAll('[data-account]').forEach((row) => {
-    const entry = entries[row.dataset.account];
-    if (!entry) return;
-    const { address } = entry;
-    const live = Boolean(address);
+    const valueEl = row.querySelector('[data-contract-value]');
+    const copyEl = row.querySelector('[data-contract-copy]');
+    const linkEl = row.querySelector('[data-contract-link]');
 
-    const valueEl = row.querySelector('[data-account-value]');
-    const copyEl = row.querySelector('[data-account-copy]');
-    const linkEl = row.querySelector('[data-account-link]');
-
-    if (valueEl) {
-      valueEl.textContent = live ? truncate(address) : entry.empty;
-      markAddress(valueEl, live);
-      if (live) valueEl.title = address;
-    }
+    if (valueEl) valueEl.textContent = live ? truncate(address) : COPY.contractEmpty;
 
     show(copyEl, live);
     if (copyEl && live) {
       attachCopy(copyEl, () => address, {
         successMessage: COPY.copied,
-        label: entry.label,
+        label: `Copy ${key} address`,
       });
     }
 
@@ -228,8 +210,8 @@ function renderProgram(config, root) {
     if (linkEl && url) linkEl.setAttribute('href', url);
   });
 
-  root.querySelectorAll('[data-network-name]').forEach((el) => {
-    el.textContent = networkInfo(config).label;
+  root.querySelectorAll('[data-chain-name]').forEach((el) => {
+    el.textContent = config?.chain?.name ?? '';
   });
 }
 
@@ -286,7 +268,7 @@ export async function applyConfig(root = document) {
   const config = await loadConfig();
   renderMeta(config, root);
   renderTokenStrip(config, root);
-  renderProgram(config, root);
+  renderContracts(config, root);
   renderLinks(config, root);
   renderAppGate(config, root);
   return config;

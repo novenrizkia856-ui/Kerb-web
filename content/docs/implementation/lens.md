@@ -1,129 +1,148 @@
-# Reading state
+# KerbLens
 
-Kerb has no read program. On Solana every account can be fetched directly over
-RPC, and every Kerb address can be derived by anyone from the keys it belongs
-to, so the read surface is a small client library rather than something
-deployed. It custodies nothing, signs nothing, and can be replaced by a better
-one without touching the program.
+A stateless read helper. It custodies nothing, writes nothing, and can be
+replaced without touching `KerbCore`.
 
-Its job is to turn raw accounts into the handful of questions an interface
-actually asks.
+Its job is to turn the raw mappings on `KerbCore` into the handful of questions
+an interface actually asks, in one call each, with paging so that a large list
+cannot make a read revert.
 
-## Deriving addresses
+## Interface
 
-```js
-import { PublicKey } from '@solana/web3.js';
+```solidity
+interface IKerbLens {
+    struct HoldView {
+        bytes32 holdId;
+        address sender;
+        address recipient;
+        address asset;
+        uint256 amount;
+        uint64  releaseAt;
+        uint64  remaining;   // seconds until releaseAt, 0 once releasable
+        bool    releasable;  // block.timestamp >= releaseAt
+    }
 
-const NATIVE = PublicKey.default;   // 11111111111111111111111111111111
+    struct Quote {
+        bool    willHold;
+        uint64  dwellSeconds;
+        uint64  releaseAt;   // 0 when willHold is false
+        bytes32 holdId;      // 0 when willHold is false
+        bool    blocked;     // a hold for this triple is already pending
+    }
 
-const pda = (...seeds) =>
-  PublicKey.findProgramAddressSync(seeds, KERB_PROGRAM_ID)[0];
+    function core() external view returns (address);
 
-const settingsOf = (sender) =>
-  pda(Buffer.from('settings'), sender.toBuffer());
+    function quote(address sender, address recipient, address asset)
+        external view returns (Quote memory);
 
-const contactOf = (sender, recipient) =>
-  pda(Buffer.from('contact'), sender.toBuffer(), recipient.toBuffer());
+    function trusted(address sender, uint256 offset, uint256 limit)
+        external view returns (address[] memory page, uint256 total);
 
-const holdOf = (sender, recipient, mint = NATIVE) =>
-  pda(Buffer.from('hold'), sender.toBuffer(), recipient.toBuffer(), mint.toBuffer());
+    function pending(address sender, uint256 offset, uint256 limit)
+        external view returns (HoldView[] memory page, uint256 total);
+
+    function hold(bytes32 holdId) external view returns (HoldView memory);
+
+    function summary(address sender) external view returns (
+        uint256 trustedTotal,
+        uint256 pendingTotal,
+        uint64  dwellSeconds
+    );
+}
 ```
-
-`KERB_PROGRAM_ID` comes from `solana.KERB_PROGRAM_ID` in the web configuration.
-It is empty today, because the program is not deployed, and none of this runs
-until it is set.
 
 ## quote
 
-The one an interface calls as the user types a recipient. One round trip, three
-accounts.
+The one an interface calls on every keystroke in the recipient field.
 
-```js
-async function quote(connection, sender, recipient, mint = NATIVE) {
-  const [settings, contact, hold] = await connection.getMultipleAccountsInfo([
-    settingsOf(sender),
-    contactOf(sender, recipient),
-    holdOf(sender, recipient, mint),
-  ]);
+```solidity
+function quote(address sender, address recipient, address asset)
+    external view returns (Quote memory q)
+{
+    q.dwellSeconds = core.dwellOf(sender);
 
-  const owned = (info) => info !== null && info.owner.equals(KERB_PROGRAM_ID);
-  const dwellSeconds = owned(settings) ? decodeSettings(settings.data).dwellSeconds || 900 : 900;
+    if (recipient == address(0) || recipient == sender) {
+        return q;   // willHold false, nothing to say
+    }
 
-  if (recipient.equals(sender) || recipient.equals(NATIVE)) {
-    return { willHold: false, dwellSeconds };
-  }
+    if (core.isTrusted(sender, recipient)) {
+        return q;   // willHold false, goes straight through
+    }
 
-  return {
-    willHold: !owned(contact),
-    dwellSeconds,
-    blocked: owned(hold),   // a hold for this triple is already open
-  };
+    q.willHold  = true;
+    q.holdId    = core.holdIdOf(sender, recipient, asset);
+    q.releaseAt = uint64(block.timestamp) + q.dwellSeconds;
+
+    ( , , , , , uint8 status) = core.holdOf(q.holdId);
+    q.blocked = status == 1;   // STATUS_PENDING
 }
 ```
 
-The ownership check matters. Anyone can send lamports to a Kerb address that has
-not been created yet, which makes the account exist, owned by the system
-program. Only an account owned by the Kerb program means anything.
-
-There is no `release_at` in the quote. The real value is fixed by the cluster
-clock when the transaction lands, so an interface should show the duration, and
-the Kerb app does.
+`releaseAt` here is a projection from the current block, not a commitment. The
+real value is fixed when the transaction lands. An interface should present it
+as an estimate, and the Kerb app shows the duration rather than a wall clock
+time for exactly that reason.
 
 `blocked` tells the interface to say "you already have a transfer waiting to
-this address" instead of letting the user sign something that will fail with
+this address" instead of letting the user sign something that will revert with
 `HoldPending`.
 
-## Lists
+## Paging
 
-A sender's contacts and open holds are every account of that type whose
-`sender` field, at byte offset 8, is the sender.
+Both list reads take `offset` and `limit` and return the page plus the true
+total, so a caller can size its next request without a second call.
 
-```js
-const discriminator = (name) => bs58.encode(anchorDiscriminator(`account:${name}`));
+```solidity
+function trusted(address sender, uint256 offset, uint256 limit)
+    external view returns (address[] memory page, uint256 total)
+{
+    total = core.trustedCount(sender);
+    if (offset >= total) return (new address[](0), total);
 
-async function contactsOf(connection, sender) {
-  return connection.getProgramAccounts(KERB_PROGRAM_ID, {
-    filters: [
-      { memcmp: { offset: 0, bytes: discriminator('Contact') } },
-      { memcmp: { offset: 8, bytes: sender.toBase58() } },
-    ],
-  });
+    uint256 n = total - offset;
+    if (n > limit) n = limit;
+
+    page = new address[](n);
+    for (uint256 i = 0; i < n; ++i) {
+        page[i] = core.trustedAt(sender, offset + i);
+    }
 }
 ```
 
-`holdsOf` is the same with `'Hold'`. Each hold decodes to its recipient, mint,
-amount and `release_at`, and an interface computes `remaining` and `releasable`
-against the cluster clock rather than the device's. `getBlockTime` on a recent
-slot, or the `Clock` sysvar account, gives that clock.
+`pending` follows the same shape, resolving each id through `holdOf` and
+computing `remaining` and `releasable` against `block.timestamp`.
 
-## Caveats
+Paging matters because `EnumerableSet` enumeration is O(n) in the page size and
+an unbounded return would eventually exceed the gas limit of an `eth_call` on a
+long list. Nothing enforces a maximum `limit`, because a view call that runs out
+of gas costs the caller nothing and fails loudly.
 
-**`getProgramAccounts` is heavy.** It scans every account the program owns.
-Filtered, it is fine for a program of Kerb's size, but some RPC providers
-restrict or charge extra for it, and the public mainnet endpoint does not serve
-browsers at all. An interface should expect to be pointed at a provider.
+## Ordering caveat
 
-**Order is not preserved.** The result order is whatever the node returns. For a
-contact list of realistic size the right answer is to sort client side, by the
-contact's `since` field. An interface that needs the exact order of additions
-and removals should read the `Trusted` and `Forgotten` events instead. See
+`EnumerableSet` does not preserve insertion order. Removing an element moves the
+last element into the vacated slot. So:
+
+- The order of `trusted` and `pending` pages is arbitrary and changes on removal.
+- Paging across a mutation can miss or repeat an entry.
+
+For a contact list of realistic size the correct answer is to read the whole set
+in one or two pages and sort client side. An interface that needs stable
+chronological order should build it from the `Trusted` and `Forgotten` logs
+instead, which do carry order. See
 [Events and errors](../protocol/events-and-errors.md).
 
-**Commitment matters.** Read at `confirmed` to show the user what they just did,
-and treat anything as final only at `finalized`. See the fork note in
-[Threat model](../concepts/threat-model.md).
+## What KerbLens deliberately does not do
 
-## What the read library deliberately does not do
+**It does not write.** No function is non view. It cannot be made to move value
+and holds no allowances.
 
-**It does not write.** It builds no transactions and asks no wallet to sign.
+**It does not hold an upgrade pointer.** `core` is `immutable`, set once in the
+constructor. A new lens is a new deployment with a new address, published in the
+web configuration.
 
-**It does not keep an index.** Every read goes to the chain. There is no Kerb
-server holding a copy, because a copy is a second source of truth that can
-drift, go away, or be compelled.
-
-**It does not aggregate across senders.** Every read is scoped to one sender,
-except the deliberately public "who has me on their list" query, which filters
-on the recipient field instead.
+**It does not aggregate across senders.** Every read is scoped to one sender.
+There is no "all pending holds" or "all trusted pairs" view, because serving one
+would mean maintaining a global index in `KerbCore` that nothing else needs.
 
 **It does not price anything.** No oracle, no value in a reference currency, no
 minimum amount logic. See [Parameters](../protocol/parameters.md).

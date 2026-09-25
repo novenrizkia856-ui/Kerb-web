@@ -10,9 +10,9 @@ Consider the two places an address can appear in your wallet.
 
 Your history is a projection of chain state. It is assembled from every transfer
 that names your address, in either direction. That means its contents are
-determined by **everyone**, not by you. Anyone holding a few lamports can add a
-row to it, permanently, for a fraction of a cent, without your consent and
-without any signature from you.
+determined by **everyone**, not by you. Anyone holding gas can add a row to it,
+permanently, for a fraction of a cent, without your consent and without any
+signature from you.
 
 The history is not wrong to work this way. It is a faithful record of what the
 chain contains. The problem is that it is presented as if it were yours, and it
@@ -20,7 +20,7 @@ is not. It is a public writeable surface rendered inside a private looking
 interface.
 
 ```
-Transaction history          write access: anyone with a lamport to spare
+Transaction history          write access: anyone with gas
 ```
 
 ### A list built from your completed sends

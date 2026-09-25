@@ -1,52 +1,23 @@
 /* app.js
    The application shell. Four states: compose, review, holding, settled.
 
-   It talks to a source rather than to a wallet or to mock data, and the two
+   It talks to a source rather than to a chain or to mock data, and the two
    sources in app-source.js have the same shape. Before a wallet is connected
-   the demo source drives it: invented contacts, a twenty second window,
-   nothing signed. Connect a Solana wallet and the wallet source takes over,
-   reading real balances into the same screens.
+   the demo source drives it, exactly as before: invented contacts, a twenty
+   second window, nothing signed. Connect a wallet on the right chain and the
+   chain source takes over, with the same screens doing real work.
 
-   With a wallet connected the flow stops at review. The Kerb program is not
-   live on Solana, so the review shows exactly what the send would do and says
-   plainly that it will not be sent. No state after review is reachable in that
-   mode, and no code in this file can reach a wallet's signing features: the
-   sources are the only thing it talks to, and neither of them has one.
-
-   Switching between sources rebuilds the view rather than patching it, because
-   a half swapped screen showing demo contacts next to real balances is worse
+   Switching between them rebuilds the view rather than patching it, because a
+   half swapped screen showing demo contacts next to a real pending is worse
    than a blank moment. */
 
-import { isAddress, markAddress, truncate } from '../../config/config.js';
+import { isAddress, truncate } from '../../config/config.js';
 import { announce } from './copy.js';
-import { demoSource, walletSource } from './app-source.js';
+import { chainSource, demoSource } from './app-source.js';
 import { mountWindow } from './kerb-visuals.js';
 import { Typer, prefersReducedMotion } from './motion.js';
 
 const STATES = ['compose', 'review', 'holding', 'settled'];
-
-const COPY = {
-  noticeDemo:
-    'Demo data. Nothing is signed or sent. Connect a Solana wallet to preview a send with your own balances.',
-  noticePreview:
-    'Wallet connected, read only. Balances are live from Solana. Sending stays off until the Kerb program is live.',
-  notLive: 'Solana execution is not active yet. Nothing will be signed or sent.',
-  confirm: 'Confirm',
-  confirmOff: 'Not live',
-  contactsEmptyDemo: 'No contacts yet.',
-  contactsEmptyPreview: 'Your list is kept by the Kerb program, which is not live on Solana yet.',
-};
-
-/** 900 reads `15 min`, 86400 reads `1 day`. */
-function duration(seconds) {
-  if (seconds >= 86400 && seconds % 86400 === 0) {
-    const d = seconds / 86400;
-    return `${d} day${d === 1 ? '' : 's'}`;
-  }
-  if (seconds >= 3600 && seconds % 3600 === 0) return `${seconds / 3600} h`;
-  if (seconds >= 60) return `${Math.round(seconds / 60)} min`;
-  return `${seconds} s`;
-}
 
 export function initApp(root) {
   if (!root) return null;
@@ -64,23 +35,44 @@ export function initApp(root) {
   const hintEl = root.querySelector('[data-to-hint]');
   const stateChip = root.querySelector('[data-send-state]');
   const reviewBtn = root.querySelector('[data-action="review"]');
-  const confirmBtn = root.querySelector('[data-action="confirm"]');
   const reviewWindowWrap = root.querySelector('[data-review-window]');
-  const reviewRouteRow = root.querySelector('[data-review-route-row]');
-  const reviewNote = root.querySelector('[data-review-note]');
   const contactsList = root.querySelector('[data-contacts]');
   const contactsEmpty = root.querySelector('[data-contacts-empty]');
+  const pendingsSection = root.querySelector('[data-pendings-section]');
+  const pendingsList = root.querySelector('[data-pendings]');
+  const pendingsEmpty = root.querySelector('[data-pendings-empty]');
   const statusEl = root.querySelector('[data-app-status]');
+  const demoWindows = root.querySelectorAll('[data-demo-window]');
+  const liveWindow = root.querySelector('[data-live-window]');
+  const releaseTextEl = root.querySelector('[data-holding="releaseText"]');
+  const countdownEl = root.querySelector('[data-holding="countdown"]');
   const notice = root.querySelector('.app-notice');
 
   const reviewWindow = mountWindow(reviewWindowWrap?.querySelector('[data-kerb-window]'));
   const holdingWindow = mountWindow(panels.get('holding').querySelector('[data-kerb-window]'));
 
   let source = demoSource();
-  let tokens = [];
   let contacts = [];
-  let draft = { to: '', amount: '' };
+  let draft = { token: '', tokenAddress: '', to: '', amount: '' };
   let busy = false;
+  let heldId = null;
+  let pendingTimer = null;
+
+  /* Seconds to add to the device clock to get the chain's. Resynced whenever
+     the lists reload, so it cannot drift far, and every window decision below
+     goes through `now()` rather than reading `Date.now()` directly. */
+  let chainOffset = 0;
+
+  const now = () => Math.floor(Date.now() / 1000) + chainOffset;
+
+  async function syncClock() {
+    try {
+      const chain = await source.now();
+      chainOffset = chain - Math.floor(Date.now() / 1000);
+    } catch {
+      /* Keep the last offset. A stale offset is closer than none. */
+    }
+  }
 
   /* --- status ------------------------------------------------------------- */
 
@@ -90,54 +82,25 @@ export function initApp(root) {
     statusEl.hidden = !text;
   }
 
-  /** Confirm only exists for a source that can carry a send through. With a
-      real wallet it stays disabled whatever else re-enables the buttons. */
-  function syncConfirm() {
-    if (!confirmBtn) return;
-    const off = !source.executes;
-    confirmBtn.textContent = off ? COPY.confirmOff : COPY.confirm;
-    if (off) confirmBtn.disabled = true;
-    if (reviewNote) {
-      reviewNote.textContent = off ? COPY.notLive : '';
-      reviewNote.hidden = !off;
-    }
-  }
-
   function setBusy(on) {
     busy = on;
     for (const button of root.querySelectorAll('[data-action]')) {
       button.disabled = on;
     }
-    syncConfirm();
     if (!on) syncAddressState();
   }
 
   /* --- token select -------------------------------------------------------- */
 
-  let tokenTicket = 0;
-
   async function renderTokens() {
     if (!tokenEl) return;
-    const ticket = ++tokenTicket;
-    if (source.mode === 'preview') setStatus('Reading your balances from Solana…');
-    let list;
-    try {
-      list = await source.tokens();
-    } catch (error) {
-      console.warn('[kerb.app] could not read tokens:', error);
-      list = [{ key: 'SOL', symbol: 'SOL', label: 'SOL' }];
-    }
-    /* A wallet change mid read must not have its list overwritten by the one
-       it replaced. */
-    if (ticket !== tokenTicket) return;
-    setStatus('');
-
-    tokens = list;
+    const list = await source.tokens();
     tokenEl.replaceChildren();
     for (const t of list) {
       const opt = document.createElement('option');
-      opt.value = t.key;
-      opt.textContent = t.label;
+      opt.value = t.address === 'custom' ? 'custom' : t.symbol;
+      opt.textContent = t.symbol;
+      opt.dataset.address = t.address ?? '';
       tokenEl.append(opt);
     }
     syncTokenMode();
@@ -150,17 +113,16 @@ export function initApp(root) {
     syncAddressState();
   }
 
-  /** The token the review is about: a fixed entry from the list, or a pasted
-      SPL mint. */
+  /** The token argument KerbCore wants: the zero address for native, or the
+      pasted ERC-20 address. */
   function selectedToken() {
-    const key = tokenEl?.value ?? '';
-    if (key !== 'custom') {
-      const entry = tokens.find((t) => t.key === key);
-      return entry ? { ok: true, ...entry } : { ok: false };
+    if (!source.live) return { ok: true, token: '', symbol: tokenEl?.value ?? '' };
+    if (tokenEl?.value !== 'custom') {
+      return { ok: true, token: '', symbol: tokenEl?.value ?? 'ETH' };
     }
-    const mint = (tokenAddressEl?.value ?? '').trim();
-    if (!isAddress(mint)) return { ok: false };
-    return { ok: true, key: mint, mint, symbol: '' };
+    const address = (tokenAddressEl?.value ?? '').trim();
+    if (!isAddress(address)) return { ok: false, token: '', symbol: '' };
+    return { ok: true, token: address, symbol: 'token' };
   }
 
   /* --- contacts ------------------------------------------------------------ */
@@ -171,9 +133,7 @@ export function initApp(root) {
 
     const addr = document.createElement('code');
     addr.className = 'contact-addr';
-    addr.dataset.address = '';
     addr.textContent = truncate(contact.address);
-    addr.title = contact.address;
 
     const label = document.createElement('span');
     label.className = 'contact-label';
@@ -198,11 +158,7 @@ export function initApp(root) {
     for (const c of contacts) {
       contactsList.append(contactRow(c, c.address === freshAddress));
     }
-    if (contactsEmpty) {
-      contactsEmpty.hidden = contacts.length > 0;
-      contactsEmpty.textContent =
-        source.mode === 'preview' ? COPY.contactsEmptyPreview : COPY.contactsEmptyDemo;
-    }
+    if (contactsEmpty) contactsEmpty.hidden = contacts.length > 0;
   }
 
   async function reloadContacts(freshAddress) {
@@ -213,6 +169,125 @@ export function initApp(root) {
       contacts = [];
     }
     renderContacts(freshAddress);
+  }
+
+  /* --- open pendings -------------------------------------------------------
+     Only shown on the live source. The demo has no concept of several holds at
+     once and inventing one would be demonstrating a feature that does not
+     exist. */
+
+  function countdown(seconds) {
+    if (seconds <= 0) return 'due';
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    if (m >= 60) return `${Math.floor(m / 60)}h ${m % 60}m`;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  function pendingRow(p) {
+    const li = document.createElement('li');
+    li.className = 'contact';
+
+    const addr = document.createElement('code');
+    addr.className = 'contact-addr';
+    addr.textContent = truncate(p.to);
+
+    const amount = document.createElement('span');
+    amount.className = 'contact-label';
+    amount.textContent = p.amountText;
+
+    const left = Math.max(0, p.releaseAt - now());
+    const when = document.createElement('span');
+    when.className = 'contact-when';
+    when.dataset.releaseAt = String(p.releaseAt);
+    when.textContent = countdown(left);
+
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'btn-corner btn--sm';
+    action.textContent = left > 0 ? 'Cancel' : 'Settle';
+    action.addEventListener('click', async () => {
+      if (busy) return;
+      /* Recomputed here, not reused from render time. The ticker relabels this
+         button when the window closes, and a handler branching on the value
+         captured when the row was built would send a cancel that the contract
+         is now certain to reject. */
+      const stillWaiting = p.releaseAt - now() > 0;
+      setBusy(true);
+      try {
+        if (stillWaiting) {
+          await source.cancel(p.id, setStatus);
+          announce('Cancelled', 'cancel');
+        } else {
+          await source.settle(p.id, setStatus);
+          announce('Settled');
+        }
+        await Promise.all([reloadPendings(), reloadContacts()]);
+      } catch (error) {
+        announce(error.message || 'That did not go through');
+      } finally {
+        setStatus('');
+        setBusy(false);
+      }
+    });
+
+    li.append(addr, amount, when, action);
+    return li;
+  }
+
+  async function reloadPendings() {
+    if (!pendingsSection) return;
+    if (!source.live) {
+      pendingsSection.hidden = true;
+      return;
+    }
+    pendingsSection.hidden = false;
+
+    await syncClock();
+
+    let rows = [];
+    try {
+      rows = await source.pendings();
+    } catch (error) {
+      console.warn('[kerb.app] could not read pendings:', error);
+      if (pendingsEmpty) {
+        pendingsEmpty.hidden = false;
+        pendingsEmpty.textContent = error.message || 'Could not read your pending transfers.';
+      }
+      pendingsList?.replaceChildren();
+      return;
+    }
+
+    pendingsList?.replaceChildren(...rows.map(pendingRow));
+    if (pendingsEmpty) {
+      pendingsEmpty.hidden = rows.length > 0;
+      pendingsEmpty.textContent = 'Nothing waiting.';
+    }
+  }
+
+  /* One timer for every row, rather than one per row. The labels are the only
+     thing that changes each second, and a row whose window has just closed
+     swaps its own button. */
+  function startPendingTicker() {
+    stopPendingTicker();
+    pendingTimer = window.setInterval(() => {
+      /* Every countdown on the page, including the one in the holding panel,
+         so there is a single clock rather than one per widget. */
+      const stamp = now();
+      for (const cell of root.querySelectorAll('[data-release-at]')) {
+        const releaseAt = Number(cell.dataset.releaseAt);
+        if (!releaseAt) continue;
+        const left = Math.max(0, releaseAt - stamp);
+        cell.textContent = countdown(left);
+        const button = cell.parentElement?.querySelector('button');
+        if (button && left === 0 && button.textContent !== 'Settle') button.textContent = 'Settle';
+      }
+    }, 1000);
+  }
+
+  function stopPendingTicker() {
+    if (pendingTimer) window.clearInterval(pendingTimer);
+    pendingTimer = null;
   }
 
   /* --- state machine ------------------------------------------------------- */
@@ -244,8 +319,8 @@ export function initApp(root) {
     let known = false;
 
     if (valid) {
-      /* A later keystroke must not be overwritten by an earlier answer
-         arriving out of order. */
+      /* The live check is a network round trip, so a later keystroke must not
+         be overwritten by an earlier reply arriving out of order. */
       const ticket = ++knownToken;
       try {
         const answer = await source.isKnown(value);
@@ -269,12 +344,12 @@ export function initApp(root) {
 
     if (hintEl) {
       hintEl.textContent = !value
-        ? 'Paste a Solana address to check your list.'
+        ? 'Paste an address to check your list.'
         : valid
           ? known
             ? 'This address goes straight through.'
             : 'A first send here waits in your window.'
-          : 'That does not look like a Solana address yet.';
+          : 'That does not look like an address yet.';
     }
 
     if (reviewBtn && !busy) {
@@ -293,33 +368,25 @@ export function initApp(root) {
   async function toReview() {
     const token = selectedToken();
     draft = {
+      token: token.token,
+      symbol: token.symbol,
       to: (toEl?.value ?? '').trim(),
       amount: (amountEl?.value ?? '').trim(),
     };
     if (!isAddress(draft.to) || !draft.amount || !token.ok) return;
 
-    setBusy(true);
     let preview;
     try {
-      preview = await source.preview({ amount: draft.amount, token, to: draft.to });
+      preview = await source.preview({ amount: draft.amount, token: draft.token });
     } catch (error) {
       announce(error.message || 'That amount is not valid');
       return;
-    } finally {
-      setBusy(false);
     }
     draft.preview = preview;
 
-    const tokenCell = root.querySelector('[data-review="token"]');
-    const amountCell = root.querySelector('[data-review="amount"]');
-    tokenCell.textContent = preview.symbol;
-    amountCell.textContent = preview.text;
-    /* A mint with no known symbol is shown as its truncated key, which has to
-       keep its case like any other address. */
-    const mintShown = preview.symbol.includes('…');
-    markAddress(tokenCell, mintShown);
-    markAddress(amountCell, mintShown);
+    root.querySelector('[data-review="token"]').textContent = preview.symbol ?? draft.symbol;
     root.querySelector('[data-review="to"]').textContent = truncate(draft.to);
+    root.querySelector('[data-review="amount"]').textContent = preview.text;
 
     let known = false;
     try {
@@ -329,57 +396,64 @@ export function initApp(root) {
     }
     draft.known = known;
 
-    const demo = source.mode === 'demo';
-    if (reviewWindowWrap) reviewWindowWrap.hidden = known || !demo;
-    if (!known && demo) reviewWindow?.reset();
+    if (reviewWindowWrap) reviewWindowWrap.hidden = known || source.live;
+    if (!known && !source.live) reviewWindow?.reset();
 
-    /* Outside the demo there is no countdown to watch, so the route is stated
-       instead: what the send would do if it could be sent. */
-    if (reviewRouteRow) {
-      reviewRouteRow.hidden = demo;
-      const value = reviewRouteRow.querySelector('[data-review="route"]');
-      if (value) {
-        value.textContent = known ? 'Direct' : `Held ${duration(source.dwellSeconds)}`;
-      }
-    }
-
-    syncConfirm();
     show('review');
   }
 
   async function toHolding() {
-    /* Belt and braces. The button is disabled for a source that does not
-       execute, and this refuses anyway if it is ever reached. */
-    if (!source.executes) {
-      announce(COPY.notLive);
-      return;
-    }
-
     setBusy(true);
     let result;
     try {
-      result = await source.submit({ to: draft.to, amount: draft.amount });
+      result = await source.submit(
+        { token: draft.token, to: draft.to, amount: draft.amount },
+        setStatus,
+      );
     } catch (error) {
-      announce(error.message || 'That did not go through');
-      return;
-    } finally {
       setStatus('');
       setBusy(false);
+      announce(error.message || 'That did not go through');
+      return;
     }
+    setStatus('');
+    setBusy(false);
 
     if (result.kind === 'direct') {
+      heldId = null;
       toSettled();
       return;
     }
 
+    heldId = result.id;
     root.querySelector('[data-holding="to"]').textContent = truncate(draft.to);
     root.querySelector('[data-holding="amount"]').textContent = draft.preview?.text ?? draft.amount;
 
     show('holding');
     holdingWindow?.reset();
-    holdingWindow?.start(() => {
-      if (current === 'holding') toSettled();
-    });
+
+    if (source.live) {
+      /* The demo widget animates a fixed twenty seconds, read once when it was
+         mounted and not changeable afterwards. Against a real window of fifteen
+         minutes to seven days that is not a countdown, it is a wrong number
+         moving convincingly, so live mode hides it and shows the real release
+         instead. The hold does not resolve itself either: settlement is a
+         separate transaction somebody has to send. */
+      const view = (await source.pendings().catch(() => [])).find(
+        (p) => String(p.id) === String(heldId),
+      );
+      if (view && countdownEl && releaseTextEl) {
+        countdownEl.dataset.releaseAt = String(view.releaseAt);
+        countdownEl.textContent = countdown(Math.max(0, view.releaseAt - now()));
+        releaseTextEl.textContent = new Date(view.releaseAt * 1000).toLocaleString();
+      }
+      await reloadContacts();
+      await reloadPendings();
+    } else {
+      holdingWindow?.start(() => {
+        if (current === 'holding') toSettled();
+      });
+    }
   }
 
   async function toSettled() {
@@ -395,6 +469,25 @@ export function initApp(root) {
     await reloadContacts(draft.to);
   }
 
+  async function cancelHold() {
+    if (!source.live || heldId === null) {
+      toCompose('Cancelled');
+      return;
+    }
+    setBusy(true);
+    try {
+      await source.cancel(heldId, setStatus);
+      heldId = null;
+      await Promise.all([reloadPendings(), reloadContacts()]);
+      toCompose('Cancelled');
+    } catch (error) {
+      announce(error.message || 'The cancel did not go through');
+    } finally {
+      setStatus('');
+      setBusy(false);
+    }
+  }
+
   function toCompose(message) {
     holdingWindow?.cancel();
     reviewWindow?.reset();
@@ -408,7 +501,7 @@ export function initApp(root) {
     review: toReview,
     back: () => toCompose(),
     confirm: toHolding,
-    cancel: () => toCompose('Cancelled'),
+    cancel: cancelHold,
     done: () => {
       if (toEl) toEl.value = '';
       if (amountEl) amountEl.value = '';
@@ -428,31 +521,52 @@ export function initApp(root) {
   root.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || busy) return;
     if (current === 'review') toCompose();
-    else if (current === 'holding') toCompose('Cancelled');
+    else if (current === 'holding') cancelHold();
   });
 
   /* --- source switching ------------------------------------------------------ */
 
   async function useSource(next) {
     source = next;
+    heldId = null;
 
-    if (reviewWindowWrap && source.mode !== 'demo') reviewWindowWrap.hidden = true;
-    if (notice) notice.textContent = source.mode === 'demo' ? COPY.noticeDemo : COPY.noticePreview;
+    for (const el of demoWindows) el.hidden = source.live;
+    if (liveWindow) liveWindow.hidden = !source.live;
+    if (reviewWindowWrap && source.live) reviewWindowWrap.hidden = true;
+    if (countdownEl) countdownEl.dataset.releaseAt = '0';
 
+    if (notice) {
+      notice.textContent = source.live
+        ? 'Live on chain. Every action below is a real transaction you sign.'
+        : 'Demo data. Connect a wallet to use the deployed contracts.';
+    }
+
+    await renderTokens();
     toCompose();
-    syncConfirm();
-    await Promise.all([renderTokens(), reloadContacts()]);
+    await Promise.all([reloadContacts(), reloadPendings()]);
+
+    if (source.live) {
+      /* Prefer the dwell the contract actually has over the one in config. */
+      try {
+        source.dwellSeconds = await source.refreshDwell();
+      } catch {
+        /* config default stands */
+      }
+      startPendingTicker();
+    } else {
+      stopPendingTicker();
+    }
   }
 
   useSource(demoSource());
 
   return {
     /** Called by main.js whenever the wallet state changes. */
-    async setWallet({ connected, account, config }) {
-      const wantPreview = connected && Boolean(account);
-      const isPreview = source.mode === 'preview';
-      if (wantPreview === isPreview && (!wantPreview || source.account === account)) return;
-      await useSource(wantPreview ? walletSource(config, account) : demoSource());
+    async setWallet({ connected, account, onKerbChain, config }) {
+      const wantLive =
+        connected && onKerbChain && Boolean(config?.contracts?.core?.address);
+      if (wantLive === source.live && (!wantLive || source.account === account)) return;
+      await useSource(wantLive ? chainSource(config, account) : demoSource());
     },
   };
 }

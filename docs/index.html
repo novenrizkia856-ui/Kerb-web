@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kerb docs</title>
-<meta name="description" content="Kerb is a small noncustodial protocol for Solana. The first transfer to an address you have never sent to is held in a short cancellation window. Every tra">
+<meta name="description" content="Kerb is a small noncustodial protocol. The first transfer to an address you have never sent to is held in a short cancellation window. Every transfer to th">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Kerb docs">
-<meta property="og:description" content="Kerb is a small noncustodial protocol for Solana. The first transfer to an address you have never sent to is held in a short cancellation window. Every tra">
+<meta property="og:description" content="Kerb is a small noncustodial protocol. The first transfer to an address you have never sent to is held in a short cancellation window. Every transfer to th">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs">
 <link rel="canonical" href="" data-site-url="/docs">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#program">Program</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -130,9 +130,9 @@
             <div class="docs-crumbs"><a href="/docs">Docs</a></div>
             <div class="docs-prose">
 <h1 id="kerb">Kerb</h1>
-<p>Kerb is a small noncustodial protocol for Solana. The first transfer to an
-address you have never sent to is held in a short cancellation window. Every
-transfer to that address afterwards goes straight through.</p>
+<p>Kerb is a small noncustodial protocol. The first transfer to an address you have
+never sent to is held in a short cancellation window. Every transfer to that
+address afterwards goes straight through.</p>
 <p>The reason this works is an asymmetry that already exists on every public chain
 and that almost nobody exploits in the user's favour:</p>
 <blockquote>
@@ -144,11 +144,9 @@ shows you. They cannot push a single entry into a list that is only ever
 appended when one of your own transfers settles.</p>
 <h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">#</a></h2>
 <p>The protocol is specified but <strong>not yet implemented</strong>. These documents are the
-specification the Solana program will be built against. Nothing here has been
-audited, deployed, or formally verified, and there is no program id. The web app
-connects a Solana wallet and reads balances, but it does not sign or send
-anything, because there is no program for it to send to. Where a design decision
-is still open it is marked <strong>Open question</strong> rather than quietly resolved.</p>
+specification the Solidity work will be built against. Nothing here has been
+audited, deployed, or formally verified. Where a design decision is still open
+it is marked <strong>Open question</strong> rather than quietly resolved.</p>
 <h2 id="how-to-read-this">How to read this<a class="headerlink" href="#how-to-read-this" title="Permanent link">#</a></h2>
 <div class="docs-table-wrap"><table>
 <thead>
@@ -171,8 +169,8 @@ is still open it is marked <strong>Open question</strong> rather than quietly re
 <td><a href="/docs/concepts/dwell-window">The dwell window</a></td>
 </tr>
 <tr>
-<td>To build the program</td>
-<td><a href="/docs/protocol/overview">Protocol overview</a> then <a href="/docs/implementation/core">The Kerb program</a></td>
+<td>To build the contracts</td>
+<td><a href="/docs/protocol/overview">Protocol overview</a> then <a href="/docs/implementation/core">KerbCore</a></td>
 </tr>
 <tr>
 <td>To integrate a wallet or a frontend</td>
@@ -185,18 +183,18 @@ is still open it is marked <strong>Open question</strong> rather than quietly re
 </tbody>
 </table></div>
 <h2 id="the-shape-of-it-in-one-screen">The shape of it in one screen<a class="headerlink" href="#the-shape-of-it-in-one-screen" title="Permanent link">#</a></h2>
-<pre><code>send(recipient, mint, amount)
+<pre><code>send(recipient, asset, amount)
   |
   +-- recipient is on your list ......... funds move now, one transfer
   |
-  +-- recipient is new .................. funds enter an escrow account
-                                          a hold opens for dwell_seconds
+  +-- recipient is new .................. funds enter escrow
+                                          a hold opens for dwellSeconds
                                           you may cancel at any point
                                           |
-                                          +-- cancel ....... funds return to you
+                                          +-- cancel() ..... funds return to you
                                           |                  nothing is trusted
                                           |
-                                          +-- settle ....... funds reach the recipient
+                                          +-- settle() ..... funds reach the recipient
                                                              the recipient joins your list
                                                              every later send goes straight through
 </code></pre>

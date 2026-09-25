@@ -2,24 +2,23 @@
 
 ## The attack
 
-A Solana address is a 32 byte public key, written in base58 as 32 to 44
-characters. Almost no interface shows all of them. Wallets, explorers and
-dashboards truncate, because forty odd characters do not fit and nobody reads
-them anyway. The usual display is the first four characters, an ellipsis, and
-the last four:
+An address on a public chain is twenty bytes shown as forty hexadecimal
+characters. Almost no interface shows all forty. Wallets, explorers and block
+scanners truncate, because forty characters do not fit and nobody reads them
+anyway. The usual display is the first few characters, an ellipsis, and the last
+few:
 
 ```
 example address, not a deployment
 
-ZtQWM4ZkTjPu3yo5EWyQgbJJzstEfc7THPKmxFUsvWN     what the chain stores
-ZtQW…svWN                                       what you are shown
+0x71C7656EC7ab88b098defB751B7401B5f6d8976F     what the chain stores
+0x71C7…976F                                    what you are shown
 ```
 
 Address poisoning attacks that truncation directly. The attacker generates a
-vanity key whose **first characters and last characters match one of yours**,
+vanity address whose **first characters and last characters match one of yours**,
 leaving the middle, the part no interface displays, completely different. Then
-they send you something worthless: a single lamport, a spam token, a transfer
-of an amount too small to notice.
+they send you something worthless: a zero value transfer, one wei, a spam token.
 
 That transfer does one thing, and it is the only thing it needs to do. It puts
 the attacker's address **into your transaction history**, sitting right next to
@@ -35,14 +34,12 @@ It works because of a gap between two things:
 
 | What the chain stores | What you compare |
 |---|---|
-| 32 bytes, 256 bits | 8 base58 characters, under 47 bits |
+| 20 bytes, 160 bits of entropy | roughly 8 characters, 32 bits at best |
 
-Finding a key that matches four characters at each end is not a cryptographic
-break. It is a vanity search: generate keys until one fits. That takes real
-compute, but it is priced in hours of rented GPU time, not in anything a user
-would ever notice, and an attacker only has to pay it once per victim address.
-The security of the full key is irrelevant, because the full key is not what the
-human checks.
+Finding an address that collides on the first six and last four hex characters
+is not a cryptographic break. It is a search over a space small enough that
+commodity hardware does it in seconds. The security of the full address is
+irrelevant, because the full address is not what the human checks.
 
 ## The scale
 
@@ -52,18 +49,13 @@ human checks.
 | 17M | distinct addresses targeted | USENIX Security 2025 |
 | 3 of 53 | wallets that warn the user at all | Wallet security study 2025 |
 
-Those measurements come from chains other than Solana. The mechanism they
-measure, a truncated display and a history anyone can write to, is the same on
-Solana, where sending a lamport or creating a token account for someone costs a
-fraction of a cent.
-
 The third number is the important one. This is not an exotic attack. It is a
 well documented, industrial scale attack, and the overwhelming majority of
 wallets render the poisoned entry exactly the same way they render the real one.
 
 ## Why the usual answers do not close it
 
-**Checking more characters.** Asking users to compare all forty odd characters is
+**Checking more characters.** Asking users to compare all forty characters is
 asking them to do something they will not do, and the attack simply moves to
 whichever characters the new interface shows.
 
@@ -72,7 +64,7 @@ user adds an entry by copying it out of the poisoned history. The list inherits
 the problem it was supposed to solve.
 
 **Blocklists.** Someone has to publish the list, someone has to trust the
-publisher, and the attacker generates a fresh key per victim. This also
+publisher, and the attacker generates a fresh address per victim. This also
 reintroduces an authority, which is exactly what a noncustodial protocol is
 trying to avoid.
 

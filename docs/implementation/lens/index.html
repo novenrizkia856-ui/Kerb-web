@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reading state | Kerb docs</title>
-<meta name="description" content="Kerb has no read program. On Solana every account can be fetched directly over RPC, and every Kerb address can be derived by anyone from the keys it belong">
+<title>KerbLens | Kerb docs</title>
+<meta name="description" content="A stateless read helper. It custodies nothing, writes nothing, and can be replaced without touching KerbCore.">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Reading state | Kerb docs">
-<meta property="og:description" content="Kerb has no read program. On Solana every account can be fetched directly over RPC, and every Kerb address can be derived by anyone from the keys it belong">
+<meta property="og:title" content="KerbLens | Kerb docs">
+<meta property="og:description" content="A stateless read helper. It custodies nothing, writes nothing, and can be replaced without touching KerbCore.">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs/implementation/lens">
 <link rel="canonical" href="" data-site-url="/docs/implementation/lens">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#program">Program</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens" aria-current="page">Reading state</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens" aria-current="page">KerbLens</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -127,114 +127,136 @@
 
         <div class="docs-body">
           <article class="docs-article">
-            <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Implementation</span><span class="sep">/</span><span>Reading state</span></div>
+            <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Implementation</span><span class="sep">/</span><span>KerbLens</span></div>
             <div class="docs-prose">
-<h1 id="reading-state">Reading state</h1>
-<p>Kerb has no read program. On Solana every account can be fetched directly over
-RPC, and every Kerb address can be derived by anyone from the keys it belongs
-to, so the read surface is a small client library rather than something
-deployed. It custodies nothing, signs nothing, and can be replaced by a better
-one without touching the program.</p>
-<p>Its job is to turn raw accounts into the handful of questions an interface
-actually asks.</p>
-<h2 id="deriving-addresses">Deriving addresses<a class="headerlink" href="#deriving-addresses" title="Permanent link">#</a></h2>
-<pre><code class="language-js">import { PublicKey } from '@solana/web3.js';
+<h1 id="kerblens">KerbLens</h1>
+<p>A stateless read helper. It custodies nothing, writes nothing, and can be
+replaced without touching <code>KerbCore</code>.</p>
+<p>Its job is to turn the raw mappings on <code>KerbCore</code> into the handful of questions
+an interface actually asks, in one call each, with paging so that a large list
+cannot make a read revert.</p>
+<h2 id="interface">Interface<a class="headerlink" href="#interface" title="Permanent link">#</a></h2>
+<pre><code class="language-solidity">interface IKerbLens {
+    struct HoldView {
+        bytes32 holdId;
+        address sender;
+        address recipient;
+        address asset;
+        uint256 amount;
+        uint64  releaseAt;
+        uint64  remaining;   // seconds until releaseAt, 0 once releasable
+        bool    releasable;  // block.timestamp &gt;= releaseAt
+    }
 
-const NATIVE = PublicKey.default;   // 11111111111111111111111111111111
+    struct Quote {
+        bool    willHold;
+        uint64  dwellSeconds;
+        uint64  releaseAt;   // 0 when willHold is false
+        bytes32 holdId;      // 0 when willHold is false
+        bool    blocked;     // a hold for this triple is already pending
+    }
 
-const pda = (...seeds) =&gt;
-  PublicKey.findProgramAddressSync(seeds, KERB_PROGRAM_ID)[0];
+    function core() external view returns (address);
 
-const settingsOf = (sender) =&gt;
-  pda(Buffer.from('settings'), sender.toBuffer());
+    function quote(address sender, address recipient, address asset)
+        external view returns (Quote memory);
 
-const contactOf = (sender, recipient) =&gt;
-  pda(Buffer.from('contact'), sender.toBuffer(), recipient.toBuffer());
+    function trusted(address sender, uint256 offset, uint256 limit)
+        external view returns (address[] memory page, uint256 total);
 
-const holdOf = (sender, recipient, mint = NATIVE) =&gt;
-  pda(Buffer.from('hold'), sender.toBuffer(), recipient.toBuffer(), mint.toBuffer());
+    function pending(address sender, uint256 offset, uint256 limit)
+        external view returns (HoldView[] memory page, uint256 total);
+
+    function hold(bytes32 holdId) external view returns (HoldView memory);
+
+    function summary(address sender) external view returns (
+        uint256 trustedTotal,
+        uint256 pendingTotal,
+        uint64  dwellSeconds
+    );
+}
 </code></pre>
-<p><code>KERB_PROGRAM_ID</code> comes from <code>solana.KERB_PROGRAM_ID</code> in the web configuration.
-It is empty today, because the program is not deployed, and none of this runs
-until it is set.</p>
 <h2 id="quote">quote<a class="headerlink" href="#quote" title="Permanent link">#</a></h2>
-<p>The one an interface calls as the user types a recipient. One round trip, three
-accounts.</p>
-<pre><code class="language-js">async function quote(connection, sender, recipient, mint = NATIVE) {
-  const [settings, contact, hold] = await connection.getMultipleAccountsInfo([
-    settingsOf(sender),
-    contactOf(sender, recipient),
-    holdOf(sender, recipient, mint),
-  ]);
+<p>The one an interface calls on every keystroke in the recipient field.</p>
+<pre><code class="language-solidity">function quote(address sender, address recipient, address asset)
+    external view returns (Quote memory q)
+{
+    q.dwellSeconds = core.dwellOf(sender);
 
-  const owned = (info) =&gt; info !== null &amp;&amp; info.owner.equals(KERB_PROGRAM_ID);
-  const dwellSeconds = owned(settings) ? decodeSettings(settings.data).dwellSeconds || 900 : 900;
+    if (recipient == address(0) || recipient == sender) {
+        return q;   // willHold false, nothing to say
+    }
 
-  if (recipient.equals(sender) || recipient.equals(NATIVE)) {
-    return { willHold: false, dwellSeconds };
-  }
+    if (core.isTrusted(sender, recipient)) {
+        return q;   // willHold false, goes straight through
+    }
 
-  return {
-    willHold: !owned(contact),
-    dwellSeconds,
-    blocked: owned(hold),   // a hold for this triple is already open
-  };
+    q.willHold  = true;
+    q.holdId    = core.holdIdOf(sender, recipient, asset);
+    q.releaseAt = uint64(block.timestamp) + q.dwellSeconds;
+
+    ( , , , , , uint8 status) = core.holdOf(q.holdId);
+    q.blocked = status == 1;   // STATUS_PENDING
 }
 </code></pre>
-<p>The ownership check matters. Anyone can send lamports to a Kerb address that has
-not been created yet, which makes the account exist, owned by the system
-program. Only an account owned by the Kerb program means anything.</p>
-<p>There is no <code>release_at</code> in the quote. The real value is fixed by the cluster
-clock when the transaction lands, so an interface should show the duration, and
-the Kerb app does.</p>
+<p><code>releaseAt</code> here is a projection from the current block, not a commitment. The
+real value is fixed when the transaction lands. An interface should present it
+as an estimate, and the Kerb app shows the duration rather than a wall clock
+time for exactly that reason.</p>
 <p><code>blocked</code> tells the interface to say "you already have a transfer waiting to
-this address" instead of letting the user sign something that will fail with
+this address" instead of letting the user sign something that will revert with
 <code>HoldPending</code>.</p>
-<h2 id="lists">Lists<a class="headerlink" href="#lists" title="Permanent link">#</a></h2>
-<p>A sender's contacts and open holds are every account of that type whose
-<code>sender</code> field, at byte offset 8, is the sender.</p>
-<pre><code class="language-js">const discriminator = (name) =&gt; bs58.encode(anchorDiscriminator(`account:${name}`));
+<h2 id="paging">Paging<a class="headerlink" href="#paging" title="Permanent link">#</a></h2>
+<p>Both list reads take <code>offset</code> and <code>limit</code> and return the page plus the true
+total, so a caller can size its next request without a second call.</p>
+<pre><code class="language-solidity">function trusted(address sender, uint256 offset, uint256 limit)
+    external view returns (address[] memory page, uint256 total)
+{
+    total = core.trustedCount(sender);
+    if (offset &gt;= total) return (new address[](0), total);
 
-async function contactsOf(connection, sender) {
-  return connection.getProgramAccounts(KERB_PROGRAM_ID, {
-    filters: [
-      { memcmp: { offset: 0, bytes: discriminator('Contact') } },
-      { memcmp: { offset: 8, bytes: sender.toBase58() } },
-    ],
-  });
+    uint256 n = total - offset;
+    if (n &gt; limit) n = limit;
+
+    page = new address[](n);
+    for (uint256 i = 0; i &lt; n; ++i) {
+        page[i] = core.trustedAt(sender, offset + i);
+    }
 }
 </code></pre>
-<p><code>holdsOf</code> is the same with <code>'Hold'</code>. Each hold decodes to its recipient, mint,
-amount and <code>release_at</code>, and an interface computes <code>remaining</code> and <code>releasable</code>
-against the cluster clock rather than the device's. <code>getBlockTime</code> on a recent
-slot, or the <code>Clock</code> sysvar account, gives that clock.</p>
-<h2 id="caveats">Caveats<a class="headerlink" href="#caveats" title="Permanent link">#</a></h2>
-<p><strong><code>getProgramAccounts</code> is heavy.</strong> It scans every account the program owns.
-Filtered, it is fine for a program of Kerb's size, but some RPC providers
-restrict or charge extra for it, and the public mainnet endpoint does not serve
-browsers at all. An interface should expect to be pointed at a provider.</p>
-<p><strong>Order is not preserved.</strong> The result order is whatever the node returns. For a
-contact list of realistic size the right answer is to sort client side, by the
-contact's <code>since</code> field. An interface that needs the exact order of additions
-and removals should read the <code>Trusted</code> and <code>Forgotten</code> events instead. See
+<p><code>pending</code> follows the same shape, resolving each id through <code>holdOf</code> and
+computing <code>remaining</code> and <code>releasable</code> against <code>block.timestamp</code>.</p>
+<p>Paging matters because <code>EnumerableSet</code> enumeration is O(n) in the page size and
+an unbounded return would eventually exceed the gas limit of an <code>eth_call</code> on a
+long list. Nothing enforces a maximum <code>limit</code>, because a view call that runs out
+of gas costs the caller nothing and fails loudly.</p>
+<h2 id="ordering-caveat">Ordering caveat<a class="headerlink" href="#ordering-caveat" title="Permanent link">#</a></h2>
+<p><code>EnumerableSet</code> does not preserve insertion order. Removing an element moves the
+last element into the vacated slot. So:</p>
+<ul>
+<li>The order of <code>trusted</code> and <code>pending</code> pages is arbitrary and changes on removal.</li>
+<li>Paging across a mutation can miss or repeat an entry.</li>
+</ul>
+<p>For a contact list of realistic size the correct answer is to read the whole set
+in one or two pages and sort client side. An interface that needs stable
+chronological order should build it from the <code>Trusted</code> and <code>Forgotten</code> logs
+instead, which do carry order. See
 <a href="/docs/protocol/events-and-errors">Events and errors</a>.</p>
-<p><strong>Commitment matters.</strong> Read at <code>confirmed</code> to show the user what they just did,
-and treat anything as final only at <code>finalized</code>. See the fork note in
-<a href="/docs/concepts/threat-model">Threat model</a>.</p>
-<h2 id="what-the-read-library-deliberately-does-not-do">What the read library deliberately does not do<a class="headerlink" href="#what-the-read-library-deliberately-does-not-do" title="Permanent link">#</a></h2>
-<p><strong>It does not write.</strong> It builds no transactions and asks no wallet to sign.</p>
-<p><strong>It does not keep an index.</strong> Every read goes to the chain. There is no Kerb
-server holding a copy, because a copy is a second source of truth that can
-drift, go away, or be compelled.</p>
-<p><strong>It does not aggregate across senders.</strong> Every read is scoped to one sender,
-except the deliberately public "who has me on their list" query, which filters
-on the recipient field instead.</p>
+<h2 id="what-kerblens-deliberately-does-not-do">What KerbLens deliberately does not do<a class="headerlink" href="#what-kerblens-deliberately-does-not-do" title="Permanent link">#</a></h2>
+<p><strong>It does not write.</strong> No function is non view. It cannot be made to move value
+and holds no allowances.</p>
+<p><strong>It does not hold an upgrade pointer.</strong> <code>core</code> is <code>immutable</code>, set once in the
+constructor. A new lens is a new deployment with a new address, published in the
+web configuration.</p>
+<p><strong>It does not aggregate across senders.</strong> Every read is scoped to one sender.
+There is no "all pending holds" or "all trusted pairs" view, because serving one
+would mean maintaining a global index in <code>KerbCore</code> that nothing else needs.</p>
 <p><strong>It does not price anything.</strong> No oracle, no value in a reference currency, no
 minimum amount logic. See <a href="/docs/protocol/parameters">Parameters</a>.</p>
 <p>Next: <a href="/docs/implementation/assets">Assets</a>.</p>
             </div>
 <nav class="docs-pager" aria-label="Page">
-<a class="panel panel-hover docs-pager-link" href="/docs/implementation/core"><span class="label">Previous</span><span class="docs-pager-title">The Kerb program</span></a>
+<a class="panel panel-hover docs-pager-link" href="/docs/implementation/core"><span class="label">Previous</span><span class="docs-pager-title">KerbCore</span></a>
 <a class="panel panel-hover docs-pager-link docs-pager-link--next" href="/docs/implementation/assets"><span class="label">Next</span><span class="docs-pager-title">Assets</span></a>
 </nav>
           </article>
@@ -242,11 +264,11 @@ minimum amount logic. See <a href="/docs/protocol/parameters">Parameters</a>.</p
 
 <aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
 <ul>
-<li><a href="#deriving-addresses">Deriving addresses</a></li>
+<li><a href="#interface">Interface</a></li>
 <li><a href="#quote">quote</a></li>
-<li><a href="#lists">Lists</a></li>
-<li><a href="#caveats">Caveats</a></li>
-<li><a href="#what-the-read-library-deliberately-does-not-do">What the read library deliberately does not do</a></li>
+<li><a href="#paging">Paging</a></li>
+<li><a href="#ordering-caveat">Ordering caveat</a></li>
+<li><a href="#what-kerblens-deliberately-does-not-do">What KerbLens deliberately does not do</a></li>
 </ul>
 </div>
 </aside>

@@ -1,179 +1,98 @@
 /* wallet.js
-   Solana wallet connection for the Kerb app shell.
+   Wallet connection for the Kerb app shell.
 
    Two ways in, and the order matters.
 
-   Wallet Standard first. Phantom, Solflare, Backpack and most other Solana
-   wallets register themselves on a browser event rather than fighting over a
-   window global, so a browser with three extensions installed offers three
-   choices instead of whichever one won the race. This is the same discovery
-   @solana/wallet-adapter runs underneath; the event protocol is small enough
-   that nothing needs importing to take part in it, which suits a site with no
-   bundler.
+   EIP-6963 first. Wallets announce themselves on an event rather than fighting
+   over `window.ethereum`, so a browser with three extensions installed offers
+   three choices instead of whichever one won the race. Nothing is imported to
+   make this work: it is a browser event and a provider object.
 
-   Injected globals second, for a wallet old enough to predate the standard
-   (`window.phantom.solana`, `window.solflare`, `window.backpack`). Only used
-   for a wallet that did not register itself, so nothing is offered twice.
+   WalletConnect second, and only if `wallet.walletConnectProjectId` is set in
+   kerb.config.json. It is loaded from a CDN at click time, not at page load, so
+   a visitor who uses an extension never downloads it.
 
-   What this file does NOT do, on purpose: sign. It never reads the
-   `solana:signTransaction`, `solana:signAndSendTransaction`,
-   `solana:signMessage` or `solana:signIn` features of a wallet, and it never
-   calls `signTransaction`, `signAllTransactions` or `sendTransaction` on an
-   injected provider. Connecting, reading the public key and disconnecting are
-   the whole surface. Kerb's Solana program is not live, so there is nothing
-   for a wallet to sign, and the safest way to guarantee nothing is signed is
-   for no code path to ask. */
+   On the project id: it is not a secret. It travels to the browser on every
+   session and anyone can read it in devtools. What protects it is the domain
+   allowlist in the WalletConnect dashboard, which is why it lives in the public
+   config file rather than in an environment variable. A static site has no
+   build step to substitute an env var into anyway.
 
-/* --- the wallets this page will suggest when none is installed --------------- */
-export const SUGGESTED_WALLETS = [
-  { name: 'Phantom', url: 'https://phantom.com/download' },
-  { name: 'Solflare', url: 'https://solflare.com/download' },
-  { name: 'Backpack', url: 'https://backpack.app/downloads' },
-];
+   Nothing here signs anything. Connecting, reading the account, and switching
+   chain are the whole surface. */
 
-/* --- Wallet Standard discovery ------------------------------------------------
-   The page announces `wallet-standard:app-ready` with a `register` function,
-   and every wallet already loaded calls it. A wallet that loads later fires
-   `wallet-standard:register-wallet` with a callback, and the page hands the
-   same `register` to it. Either order ends in the same place. */
+/* The `+esm` suffix matters and is not interchangeable with the package's own
+   `dist/index.es.js`. That file begins `import { EventEmitter } from "events"`,
+   a bare specifier Node resolves and a browser cannot, so importing it fails
+   with a module resolution TypeError before any WalletConnect code runs. The
+   `+esm` build is bundled by jsDelivr: no bare specifiers, and its remaining
+   imports are absolute paths on the same CDN origin. */
+const WC_CDN = 'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.17.0/+esm';
 
-const discovered = new Map();
-
-function isSolanaWallet(wallet) {
-  return (
-    typeof wallet?.name === 'string' &&
-    Array.isArray(wallet.chains) &&
-    wallet.chains.some((chain) => String(chain).startsWith('solana:')) &&
-    typeof wallet.features?.['standard:connect']?.connect === 'function'
-  );
-}
-
-/** The first account on a Solana chain, or the first account at all. */
-function pickAccount(accounts) {
-  const list = Array.isArray(accounts) ? accounts : [];
-  const solana = list.find((a) => a?.chains?.some?.((c) => String(c).startsWith('solana:')));
-  return String((solana ?? list[0])?.address ?? '');
-}
-
-function standardEntry(wallet) {
+/* --- chain ------------------------------------------------------------------
+   Built from config so there is one source of truth for the chain id, and a
+   mismatch between what the site thinks it is talking to and what the wallet
+   is pointed at cannot happen silently. */
+function chainParams(config) {
+  const id = Number(config?.chain?.id ?? 0);
+  if (!id) return null;
+  const currency = config?.chain?.nativeCurrency ?? {};
   return {
-    id: `standard:${wallet.name}`,
-    name: wallet.name,
-    icon: typeof wallet.icon === 'string' ? wallet.icon : '',
-    async connect({ silent = false } = {}) {
-      const feature = wallet.features['standard:connect'];
-      const result = await feature.connect(silent ? { silent: true } : undefined);
-      return pickAccount(result?.accounts ?? wallet.accounts);
+    chainId: `0x${id.toString(16)}`,
+    chainName: config?.chain?.name || `Chain ${id}`,
+    nativeCurrency: {
+      name: currency.name || 'Ether',
+      symbol: currency.symbol || 'ETH',
+      decimals: Number(currency.decimals ?? 18),
     },
-    async disconnect() {
-      await wallet.features['standard:disconnect']?.disconnect?.();
-    },
-    subscribe(fn) {
-      const off = wallet.features['standard:events']?.on?.('change', (changes) => {
-        if (changes && 'accounts' in changes) fn(pickAccount(changes.accounts));
-      });
-      return typeof off === 'function' ? off : () => {};
-    },
+    rpcUrls: [config?.chain?.rpcUrl].filter(Boolean),
+    blockExplorerUrls: [config?.chain?.explorerBaseUrl].filter(Boolean),
   };
 }
 
-const registry = Object.freeze({
-  register(...wallets) {
-    for (const wallet of wallets) {
-      if (!isSolanaWallet(wallet)) continue;
-      discovered.set(wallet.name, standardEntry(wallet));
-    }
-    return () => {
-      for (const wallet of wallets) discovered.delete(wallet?.name);
-    };
-  },
-});
+/* --- EIP-6963 discovery -----------------------------------------------------
+   Wallets respond to the request event synchronously, so a short window is
+   enough. Resolving on a timer rather than waiting for a count means a browser
+   with no wallet at all does not hang the button. */
+const discovered = new Map();
 
 function startDiscovery() {
   if (typeof window === 'undefined') return;
-  window.addEventListener('wallet-standard:register-wallet', (event) => {
-    try {
-      event.detail?.(registry);
-    } catch (error) {
-      console.warn('[kerb.wallet] a wallet failed to register:', error);
-    }
+  window.addEventListener('eip6963:announceProvider', (event) => {
+    const detail = event.detail;
+    if (!detail?.info?.uuid || !detail?.provider) return;
+    discovered.set(detail.info.uuid, detail);
   });
-  try {
-    window.dispatchEvent(new CustomEvent('wallet-standard:app-ready', { detail: registry }));
-  } catch (error) {
-    console.warn('[kerb.wallet] wallet discovery could not start:', error);
-  }
+  window.dispatchEvent(new Event('eip6963:requestProvider'));
 }
 
 startDiscovery();
 
-/* --- injected fallback -------------------------------------------------------- */
+export function listInjected() {
+  window.dispatchEvent(new Event('eip6963:requestProvider'));
+  const found = [...discovered.values()].map((d) => ({
+    id: d.info.uuid,
+    name: d.info.name,
+    icon: d.info.rdns ? d.info.icon : '',
+    provider: d.provider,
+  }));
 
-function keyToString(key) {
-  if (!key) return '';
-  return String(typeof key.toBase58 === 'function' ? key.toBase58() : key);
-}
-
-function injectedEntry(name, provider) {
-  return {
-    id: `injected:${name}`,
-    name,
-    icon: '',
-    async connect({ silent = false } = {}) {
-      const result = await provider.connect(silent ? { onlyIfTrusted: true } : undefined);
-      return keyToString(result?.publicKey ?? provider.publicKey);
-    },
-    async disconnect() {
-      await provider.disconnect?.();
-    },
-    subscribe(fn) {
-      /* A null key on accountChanged means the wallet moved to an account this
-         site was never shown. Treated as a disconnect rather than guessed at. */
-      const onAccount = (key) => fn(keyToString(key));
-      const onDisconnect = () => fn('');
-      provider.on?.('accountChanged', onAccount);
-      provider.on?.('disconnect', onDisconnect);
-      return () => {
-        const off = provider.off ?? provider.removeListener;
-        off?.call(provider, 'accountChanged', onAccount);
-        off?.call(provider, 'disconnect', onDisconnect);
-      };
-    },
-  };
-}
-
-function injectedWallets() {
-  if (typeof window === 'undefined') return [];
-  const found = [];
-  const candidates = [
-    ['Phantom', window.phantom?.solana],
-    ['Solflare', window.solflare],
-    ['Backpack', window.backpack],
-  ];
-  for (const [name, provider] of candidates) {
-    if (provider && typeof provider.connect === 'function') found.push(injectedEntry(name, provider));
-  }
-  /* The generic global, only when nothing more specific was found. */
-  if (!found.length && window.solana && typeof window.solana.connect === 'function') {
-    found.push(injectedEntry('Solana wallet', window.solana));
+  /* A wallet that predates EIP-6963 only ever sets window.ethereum. Include it,
+     but not twice: if anything announced itself, the announcements are better
+     information than the global. */
+  if (!found.length && window.ethereum) {
+    found.push({ id: 'injected', name: 'Browser wallet', icon: '', provider: window.ethereum });
   }
   return found;
 }
 
-export function listWallets() {
-  const standard = [...discovered.values()];
-  const names = new Set(standard.map((w) => w.name.toLowerCase()));
-  const legacy = injectedWallets().filter((w) => !names.has(w.name.toLowerCase()));
-  return [...standard, ...legacy];
-}
-
-/* --- state -------------------------------------------------------------------- */
+/* --- state ------------------------------------------------------------------ */
 
 const state = {
-  entry: null,
+  provider: null,
   account: '',
+  chainId: 0,
   walletName: '',
-  unsubscribe: null,
 };
 
 const listeners = new Set();
@@ -188,6 +107,7 @@ function snapshot() {
   return {
     connected: Boolean(state.account),
     account: state.account,
+    chainId: state.chainId,
     walletName: state.walletName,
   };
 }
@@ -203,12 +123,25 @@ function emit() {
   }
 }
 
+function bind(provider) {
+  if (!provider?.on) return;
+  provider.on('accountsChanged', (accounts) => {
+    state.account = accounts?.[0] ?? '';
+    if (!state.account) reset();
+    else emit();
+  });
+  provider.on('chainChanged', (hex) => {
+    state.chainId = Number.parseInt(hex, 16) || 0;
+    emit();
+  });
+  provider.on('disconnect', () => reset());
+}
+
 function reset() {
-  state.unsubscribe?.();
-  state.entry = null;
+  state.provider = null;
   state.account = '';
+  state.chainId = 0;
   state.walletName = '';
-  state.unsubscribe = null;
   try {
     window.localStorage.removeItem('kerb-wallet');
   } catch {
@@ -217,71 +150,144 @@ function reset() {
   emit();
 }
 
-function adopt(entry, account) {
-  state.unsubscribe?.();
-  state.entry = entry;
-  state.account = account;
-  state.walletName = entry.name || 'Wallet';
-  state.unsubscribe = entry.subscribe((next) => {
-    if (!next) {
-      reset();
-      return;
-    }
-    state.account = next;
-    emit();
-  });
-  try {
-    window.localStorage.setItem('kerb-wallet', entry.name);
-  } catch {
-    /* remembering the choice is a convenience, not a requirement */
-  }
-  emit();
-}
-
-/* --- connecting ------------------------------------------------------------------
+/* --- connecting -------------------------------------------------------------
    Every failure here is returned, never thrown at the caller's feet. A user
    who closes the wallet popup has not caused an error worth a stack trace, and
-   the button has to go back to its resting state either way. The raw error
-   goes to the console for whoever is debugging; the person gets a sentence. */
+   the button has to go back to its resting state either way. */
 
-function friendly(error) {
-  const text = String(error?.message ?? '').toLowerCase();
-  if (error?.code === 4001 || text.includes('reject') || text.includes('denied')) {
-    return 'Connection rejected.';
-  }
-  return 'Could not connect to that wallet.';
-}
+export async function connectInjected(entry, config) {
+  const provider = entry?.provider;
+  if (!provider) return { ok: false, reason: 'No wallet found.' };
 
-export async function connect(entry) {
-  if (!entry) return { ok: false, reason: 'No wallet found.' };
   try {
-    const account = await entry.connect();
-    if (!account) return { ok: false, reason: 'No account was shared.' };
-    adopt(entry, account);
+    const accounts = await provider.request({ method: 'eth_requestAccounts' });
+    if (!accounts?.length) return { ok: false, reason: 'No account was shared.' };
+
+    state.provider = provider;
+    state.account = accounts[0];
+    state.walletName = entry.name || 'Wallet';
+
+    const hex = await provider.request({ method: 'eth_chainId' });
+    state.chainId = Number.parseInt(hex, 16) || 0;
+
+    bind(provider);
+    try {
+      window.localStorage.setItem('kerb-wallet', entry.id);
+    } catch {
+      /* remembering the choice is a convenience, not a requirement */
+    }
+    emit();
+
+    const wanted = Number(config?.chain?.id ?? 0);
+    if (wanted && state.chainId !== wanted) {
+      await switchChain(config);
+    }
     return { ok: true };
   } catch (error) {
-    console.warn('[kerb.wallet] connect failed:', error);
-    return { ok: false, reason: friendly(error) };
+    if (error?.code === 4001) return { ok: false, reason: 'Connection rejected.' };
+    return { ok: false, reason: error?.message || 'Could not connect.' };
+  }
+}
+
+export async function connectWalletConnect(config) {
+  const projectId = config?.wallet?.walletConnectProjectId ?? '';
+  if (!projectId) {
+    return { ok: false, reason: 'WalletConnect is not configured.' };
+  }
+
+  const params = chainParams(config);
+  if (!params) return { ok: false, reason: 'No chain configured.' };
+
+  try {
+    const { EthereumProvider } = await import(/* @vite-ignore */ WC_CDN);
+    const provider = await EthereumProvider.init({
+      projectId,
+      chains: [Number(config.chain.id)],
+      optionalChains: [Number(config.chain.id)],
+      showQrModal: true,
+      rpcMap: { [Number(config.chain.id)]: config.chain.rpcUrl },
+      metadata: {
+        name: config?.meta?.productName || 'Kerb',
+        description: config?.meta?.ogDescription || '',
+        url: window.location.origin,
+        icons: [`${window.location.origin}/assets/img/icon.svg`],
+      },
+    });
+
+    await provider.connect();
+    const accounts = await provider.request({ method: 'eth_requestAccounts' });
+    if (!accounts?.length) return { ok: false, reason: 'No account was shared.' };
+
+    state.provider = provider;
+    state.account = accounts[0];
+    state.walletName = 'WalletConnect';
+    state.chainId = Number(provider.chainId) || Number(config.chain.id);
+
+    bind(provider);
+    emit();
+    return { ok: true };
+  } catch (error) {
+    if (error?.code === 4001) return { ok: false, reason: 'Connection rejected.' };
+    /* The CDN import is the fragile part of this path, so a failure here is
+       reported as what it is rather than as a wallet problem. The message the
+       browser gives for an unresolvable module is unhelpful on its own, so the
+       real one goes to the console for whoever is debugging it. */
+    if (error instanceof TypeError) {
+      console.warn('[kerb.wallet] WalletConnect module failed to load:', error);
+      return { ok: false, reason: 'WalletConnect could not be loaded. Check the console.' };
+    }
+    return { ok: false, reason: error?.message || 'Could not connect.' };
   }
 }
 
 export async function disconnect() {
-  const entry = state.entry;
+  const provider = state.provider;
   try {
-    await entry?.disconnect();
+    if (provider?.disconnect) await provider.disconnect();
   } catch {
-    /* a wallet that will not let go is still gone as far as this page is
+    /* a provider that will not let go is still gone as far as this page is
        concerned, so fall through to the local reset */
   }
   reset();
 }
 
-/* --- reconnecting -----------------------------------------------------------------
-   Only ever silent. A silent connect does not prompt, so a visitor who has not
+/* --- chain switching --------------------------------------------------------
+   Try to switch, and if the wallet has never heard of the chain, add it and
+   switch again. 4902 is the code for "unrecognised chain". */
+export async function switchChain(config) {
+  const provider = state.provider;
+  const params = chainParams(config);
+  if (!provider || !params) return { ok: false, reason: 'Not connected.' };
+
+  try {
+    await provider.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: params.chainId }],
+    });
+    state.chainId = Number(config.chain.id);
+    emit();
+    return { ok: true };
+  } catch (error) {
+    if (error?.code === 4902 || error?.data?.originalError?.code === 4902) {
+      try {
+        await provider.request({ method: 'wallet_addEthereumChain', params: [params] });
+        state.chainId = Number(config.chain.id);
+        emit();
+        return { ok: true };
+      } catch (addError) {
+        return { ok: false, reason: addError?.message || 'Could not add the network.' };
+      }
+    }
+    if (error?.code === 4001) return { ok: false, reason: 'Network switch rejected.' };
+    return { ok: false, reason: error?.message || 'Could not switch network.' };
+  }
+}
+
+/* --- reconnecting -----------------------------------------------------------
+   Only ever silent. `eth_accounts` does not prompt, so a visitor who has not
    authorised this site sees nothing, and one who has is picked up where they
-   left off. Wallets can register a beat after the page loads, so the
-   remembered one is given a short while to appear. */
-export async function restore() {
+   left off. */
+export async function restore(config) {
   let remembered = '';
   try {
     remembered = window.localStorage.getItem('kerb-wallet') || '';
@@ -290,17 +296,20 @@ export async function restore() {
   }
   if (!remembered) return { ok: false };
 
-  let entry = null;
-  for (let waited = 0; waited <= 1000 && !entry; waited += 100) {
-    entry = listWallets().find((w) => w.name === remembered) ?? null;
-    if (!entry) await new Promise((resolve) => setTimeout(resolve, 100));
-  }
+  const entry = listInjected().find((w) => w.id === remembered);
   if (!entry) return { ok: false };
 
   try {
-    const account = await entry.connect({ silent: true });
-    if (!account) return { ok: false };
-    adopt(entry, account);
+    const accounts = await entry.provider.request({ method: 'eth_accounts' });
+    if (!accounts?.length) return { ok: false };
+
+    state.provider = entry.provider;
+    state.account = accounts[0];
+    state.walletName = entry.name || 'Wallet';
+    const hex = await entry.provider.request({ method: 'eth_chainId' });
+    state.chainId = Number.parseInt(hex, 16) || 0;
+    bind(entry.provider);
+    emit();
     return { ok: true };
   } catch {
     return { ok: false };
@@ -309,4 +318,40 @@ export async function restore() {
 
 export function getState() {
   return snapshot();
+}
+
+/** The raw EIP-1193 provider, for `kerb.js` to send its own requests through.
+    Null when nothing is connected, so every caller has to decide what to do
+    about that rather than getting a stub that silently fails. */
+export function getProvider() {
+  return state.provider;
+}
+
+export function isOnKerbChain(config) {
+  const wanted = Number(config?.chain?.id ?? 0);
+  return Boolean(wanted) && state.chainId === wanted;
+}
+
+/* --- reads ------------------------------------------------------------------
+   `eth_call` through the connected wallet, so a read uses the same node the
+   user's wallet uses and there is no second RPC to configure or rate limit.
+
+   Deliberately hand rolled rather than pulling in an ABI encoder: the app needs
+   four reads, all of them taking one or two addresses and returning one word.
+   A library for that is more surface than the thing it replaces. */
+
+function padAddress(address) {
+  return String(address).replace(/^0x/, '').toLowerCase().padStart(64, '0');
+}
+
+export async function call(to, selector, args = []) {
+  const provider = state.provider;
+  if (!provider) return null;
+  const data = `0x${selector}${args.map(padAddress).join('')}`;
+  try {
+    return await provider.request({ method: 'eth_call', params: [{ to, data }, 'latest'] });
+  } catch (error) {
+    console.warn('[kerb.wallet] eth_call failed:', error);
+    return null;
+  }
 }

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Security | Kerb docs</title>
-<meta name="description" content="Concerns to hold in mind while writing the program, and the specific defence for each. This complements the Threat model, which covers the protocol level.">
+<meta name="description" content="Concerns to hold in mind while writing the contracts, and the specific defence for each. This complements the Threat model, which covers the protocol level">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Security | Kerb docs">
-<meta property="og:description" content="Concerns to hold in mind while writing the program, and the specific defence for each. This complements the Threat model, which covers the protocol level.">
+<meta property="og:description" content="Concerns to hold in mind while writing the contracts, and the specific defence for each. This complements the Threat model, which covers the protocol level">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs/implementation/security">
 <link rel="canonical" href="" data-site-url="/docs/implementation/security">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#program">Program</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security" aria-current="page">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -130,115 +130,73 @@
             <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Implementation</span><span class="sep">/</span><span>Security</span></div>
             <div class="docs-prose">
 <h1 id="security">Security</h1>
-<p>Concerns to hold in mind while writing the program, and the specific defence
-for each. This complements the <a href="/docs/concepts/threat-model">Threat model</a>,
-which covers the protocol level. This page is about the code.</p>
-<p>Most Solana program bugs are not arithmetic or reentrancy. They are an
-instruction trusting an account it was handed without checking what it is. So
-most of this page is about accounts.</p>
-<h2 id="account-validation">Account validation<a class="headerlink" href="#account-validation" title="Permanent link">#</a></h2>
-<p>Every account an instruction touches is either derived and checked by seeds,
-checked by ownership, or is a signer. None is trusted by position.</p>
+<p>Concerns to hold in mind while writing the contracts, and the specific defence
+for each. This complements the
+<a href="/docs/concepts/threat-model">Threat model</a>, which covers the protocol level.
+This page is about the code.</p>
+<h2 id="reentrancy">Reentrancy<a class="headerlink" href="#reentrancy" title="Permanent link">#</a></h2>
+<p>Every function that moves value uses two defences together.</p>
+<p><strong>Checks, effects, interactions.</strong> State is fully resolved before any external
+call. In <code>cancel</code> and <code>settle</code> the hold is removed from the pending set and
+deleted from storage before a single wei moves. A reentrant call arriving during
+the transfer reads <code>STATUS_NONE</code> and reverts with <code>HoldNotFound</code>.</p>
+<p><strong>A reentrancy guard.</strong> <code>send</code>, <code>cancel</code>, <code>settle</code> and <code>claim</code> carry
+<code>nonReentrant</code>. This is redundant against the ordering above and is kept anyway,
+because the cost is one storage slot and the failure mode it protects against is
+total loss.</p>
+<p>The native push uses a full gas <code>call</code>, so a recipient contract can run
+arbitrary code during <code>settle</code>. That is the intended behaviour, and it is why
+the ordering matters more than the guard.</p>
+<pre><code class="language-solidity">// wrong, do not write this
+IERC20(h.asset).safeTransfer(h.recipient, h.amount);
+delete _holds[holdId];
+
+// right
+delete _holds[holdId];
+IERC20(h.asset).safeTransfer(h.recipient, h.amount);
+</code></pre>
+<h2 id="cross-function-reentrancy">Cross function reentrancy<a class="headerlink" href="#cross-function-reentrancy" title="Permanent link">#</a></h2>
+<p>A recipient reentering during <code>settle</code> could call <code>send</code>, <code>cancel</code>, <code>forget</code> or
+<code>claim</code>. Walk each:</p>
 <div class="docs-table-wrap"><table>
 <thead>
 <tr>
-<th>Account</th>
-<th>Check</th>
+<th>Reentered into</th>
+<th>Outcome</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>hold</code>, <code>contact</code>, <code>settings</code>, <code>claim</code></td>
-<td><code>seeds</code> and <code>bump</code> constraints, so only the one correct address is accepted. Owner is the Kerb program, checked by Anchor's <code>Account&lt;T&gt;</code>.</td>
+<td><code>send</code></td>
+<td>Blocked by <code>nonReentrant</code>. Without it, still safe: a new hold has a different id and its own funds.</td>
 </tr>
 <tr>
-<td><code>vault</code>, <code>claim_vault</code></td>
-<td>Associated token account of the hold or claim PDA for this mint, with the token program checked as its owner.</td>
+<td><code>cancel</code></td>
+<td>The hold being settled is already deleted, so <code>HoldNotFound</code>.</td>
 </tr>
 <tr>
-<td><code>sender</code></td>
-<td><code>Signer</code>, and <code>has_one = sender</code> on the hold for <code>cancel</code>.</td>
+<td><code>settle</code> on the same id</td>
+<td>Already deleted, <code>HoldNotFound</code>.</td>
 </tr>
 <tr>
-<td><code>recipient</code></td>
-<td>Unchecked by design, it is any address. <code>has_one = recipient</code> on the hold for <code>settle</code>, so settle cannot be pointed at someone else.</td>
+<td><code>settle</code> on a different id</td>
+<td>Blocked by the guard. Without it, safe, the other hold is independent and funded.</td>
 </tr>
 <tr>
-<td><code>mint</code></td>
-<td>Owned by the SPL Token or Token-2022 program, and equal to <code>hold.mint</code>.</td>
+<td><code>forget</code></td>
+<td>Touches only the caller own list. The trust granted by the outer settle belongs to the sender, not the recipient.</td>
 </tr>
 <tr>
-<td><code>token_program</code></td>
-<td>One of the two token program ids, and the one that owns the mint.</td>
-</tr>
-<tr>
-<td><code>sender_token_account</code>, <code>recipient_token_account</code></td>
-<td>Token accounts for this mint, owned by the right wallet, under the right token program.</td>
+<td><code>claim</code></td>
+<td>Balance is zeroed before the push, so a second claim sees zero.</td>
 </tr>
 </tbody>
 </table></div>
-<p>The wrong version of this is easy to write and looks fine:</p>
-<pre><code class="language-rust">// wrong: any account at all is accepted as the recipient's token account,
-// so a caller could pass their own and receive the settlement
-#[account(mut)]
-pub recipient_token_account: AccountInfo&lt;'info&gt;,
-
-// right: it must be the recipient's associated token account for this mint
-#[account(
-    init_if_needed, payer = payer,
-    associated_token::mint = mint,
-    associated_token::authority = recipient,
-    associated_token::token_program = token_program,
-)]
-pub recipient_token_account: InterfaceAccount&lt;'info, TokenAccount&gt;,
-</code></pre>
-<h2 id="signers-and-pdas">Signers and PDAs<a class="headerlink" href="#signers-and-pdas" title="Permanent link">#</a></h2>
-<p>The program signs for exactly two kinds of account, holds and claims, and only
-to move funds out of their own vaults. It signs with <code>invoke_signed</code> using the
-account's own seeds and stored bump, so a signature for one hold can never
-authorise a transfer from another.</p>
-<p>The sender's signature is never stored or reused. It authorises the transfer in
-the <code>send</code> transaction and nothing else. There is no delegate, no allowance and
-no off chain signature verification anywhere in the program.</p>
-<h2 id="closing-accounts">Closing accounts<a class="headerlink" href="#closing-accounts" title="Permanent link">#</a></h2>
-<p>Closing a hold, vault, contact, settings or claim account is done through
-Anchor's <code>close</code> constraint, which moves every lamport out and marks the data as
-closed in the same instruction. That matters: an account that is only drained of
-lamports, with its data left in place, could be topped back up within the same
-transaction and read as still open.</p>
-<p>A closed account's address can be created again later, which is what makes hold
-addresses reusable, and what the lifecycle depends on.</p>
-<h2 id="pre-funded-addresses">Pre-funded addresses<a class="headerlink" href="#pre-funded-addresses" title="Permanent link">#</a></h2>
-<p>Anyone can send lamports to an address before the program creates an account
-there. A plain <code>create_account</code> fails on such an address, which would let an
-attacker block a user's hold or contact from ever being created, for the price
-of one transfer.</p>
-<p>Anchor's <code>init</code> handles this: when the target already holds lamports it tops
-them up to the rent exempt minimum, then allocates and assigns the account
-instead of creating it. The contact creation inside <code>settle</code>, which is done by
-hand so its rent can come from the hold, must follow the same pattern. There is
-a test for it. See <a href="/docs/implementation/testing">Testing</a>.</p>
-<h2 id="duplicate-accounts">Duplicate accounts<a class="headerlink" href="#duplicate-accounts" title="Permanent link">#</a></h2>
-<p>An instruction handed the same account in two mutable positions can end up
-double counting. <code>settle</code> with <code>recipient_token_account</code> equal to <code>vault</code>, or
-<code>claim</code> with <code>destination</code> equal to <code>claim_vault</code>, are the cases to reject.
-Both are rejected by the associated token constraints above, because a PDA's
-vault can never be the recipient's own associated account, and are asserted in
-tests anyway.</p>
-<h2 id="reentrancy">Reentrancy<a class="headerlink" href="#reentrancy" title="Permanent link">#</a></h2>
-<p>Solana does not allow a program to be re-entered through a cross program
-invocation, except by invoking itself directly. Kerb invokes the system, token
-and associated token programs, none of which call back, and itself only for
-<code>emit_cpi!</code>, which records an event and changes nothing.</p>
-<p>Transfer hooks are the one way a token transfer can run arbitrary code, and the
-hold path refuses mints that have one. See <a href="/docs/implementation/assets">Assets</a>.</p>
-<p>State is still written before value moves, as a matter of habit: the hold is
-read into locals, the contact is created, then funds move, then accounts close.</p>
 <h2 id="solvency">Solvency<a class="headerlink" href="#solvency" title="Permanent link">#</a></h2>
 <p>Invariant 3 from <a href="/docs/protocol/state">State</a>:</p>
 <blockquote>
-<p>For every hold, its escrow holds at least <code>amount</code>. For every claim, its vault
-holds at least <code>amount</code>.</p>
+<p>For every asset, the contract balance is at least the sum of all pending hold
+amounts plus all claimable balances for that asset.</p>
 </blockquote>
 <p>Everything that could break it:</p>
 <div class="docs-table-wrap"><table>
@@ -251,83 +209,88 @@ holds at least <code>amount</code>.</p>
 <tbody>
 <tr>
 <td>Recording a requested amount larger than what arrived</td>
-<td>Vault balance measured before and after the deposit</td>
+<td>Balance delta measurement on the ERC20 hold path</td>
 </tr>
 <tr>
-<td>A permanent delegate moving tokens out of the vault</td>
-<td>Mints with the extension are refused on the hold path</td>
+<td>Untracked native value entering</td>
+<td><code>receive()</code> reverts, <code>ValueMismatch</code> on send</td>
 </tr>
 <tr>
-<td>A transfer hook refusing the vault's outbound transfer</td>
-<td>Mints with the extension are refused on the hold path</td>
+<td>Native value attached to an ERC20 send</td>
+<td><code>NativeNotAccepted</code></td>
 </tr>
 <tr>
 <td>Paying a hold twice</td>
-<td>The hold is closed in the instruction that pays it</td>
+<td>The hold is deleted before payment</td>
 </tr>
 <tr>
-<td>Claim paying more than owed</td>
-<td>The claim is closed in the instruction that pays it</td>
+<td>Claim draining more than owed</td>
+<td>Balance zeroed before the push</td>
 </tr>
 <tr>
-<td>A freeze authority freezing the vault</td>
-<td>Not defended. Documented in <a href="/docs/implementation/assets">Assets</a></td>
+<td>A rebasing token shrinking the balance</td>
+<td>Not defended. Do not use rebasing tokens, see <a href="/docs/implementation/assets">Assets</a></td>
 </tr>
 </tbody>
 </table></div>
 <p>This is the invariant to fuzz hardest. See <a href="/docs/implementation/testing">Testing</a>.</p>
 <h2 id="griefing">Griefing<a class="headerlink" href="#griefing" title="Permanent link">#</a></h2>
-<p><strong>Can somebody open a hold in my name?</strong> No. <code>send</code> requires the sender's
-signature and only moves funds from accounts the sender owns.</p>
+<p><strong>Can somebody open a hold in my name?</strong> No. <code>send</code> takes the sender from
+<code>msg.sender</code> and the caller supplies the funds. There is no delegated send, no
+permit path and no meta transaction.</p>
 <p><strong>Can somebody stop my hold settling?</strong> No. <code>settle</code> is permissionless and has
-no precondition other than the clock.</p>
-<p><strong>Can somebody cancel my hold?</strong> No. <code>has_one = sender</code> and the <code>Signer</code>
-constraint reject any other key.</p>
-<p><strong>Can somebody fill my trust list with junk?</strong> No. A contact account is created
-only by <code>settle</code>, only for the recipient of a hold the sender created and
-funded.</p>
-<p><strong>Can somebody block my hold or contact address?</strong> Not by pre-funding it, as
-above. Only by causing a hold to be open for the same sender, recipient and mint,
-and only the sender can do that. Blocking yourself is possible and is reported
-by the quote's <code>blocked</code> field.</p>
-<p><strong>Can a recipient trap funds?</strong> A frozen recipient account routes the tokens to
-a claim rather than stranding the hold. An issuer freezing the vault itself can
-strand it, as documented.</p>
-<h2 id="clock-dependence">Clock dependence<a class="headerlink" href="#clock-dependence" title="Permanent link">#</a></h2>
-<p><code>Clock::get()?.unix_timestamp</code> sets <code>release_at</code> and gates both <code>cancel</code> and
-<code>settle</code>. It is a stake weighted estimate from validator votes and can drift
-from wall clock time by seconds. Against a minimum dwell of sixty seconds that is
-not enough to matter, and there is no financial edge in moving a settlement a
-few seconds either way, because settlement pays the recipient exactly what was
-held, with no price, no rate and no fee.</p>
-<p>Do not use the slot number instead. Slot times vary and the value being
+no precondition other than the timestamp.</p>
+<p><strong>Can somebody cancel my hold?</strong> No. <code>cancel</code> checks <code>h.sender != msg.sender</code>.</p>
+<p><strong>Can somebody fill my trust list with junk?</strong> No. The set is written only by
+<code>settle</code>, and only with the recipient of a hold the caller created and funded.</p>
+<p><strong>Can somebody block my hold id?</strong> Only by causing a pending hold to exist for
+the same sender, recipient and asset triple, and only the sender can do that.
+Blocking yourself is possible and is reported by <code>Quote.blocked</code>.</p>
+<p><strong>Can a recipient trap funds?</strong> They can refuse a native push, which routes to
+<code>claimable</code> rather than reverting. For an ERC20 with a blocklist they can leave
+a hold pending indefinitely. That case is an open question in
+<a href="/docs/implementation/assets">Assets</a>.</p>
+<h2 id="timestamp-dependence">Timestamp dependence<a class="headerlink" href="#timestamp-dependence" title="Permanent link">#</a></h2>
+<p><code>block.timestamp</code> sets <code>releaseAt</code> and gates both <code>cancel</code> and <code>settle</code>. A block
+producer can shift it by a small amount. Against a minimum dwell of sixty
+seconds the achievable shift is not enough to matter, and there is no financial
+edge in moving a settlement a few seconds either way, because settlement pays
+the recipient exactly what was held with no price, no rate and no fee.</p>
+<p>Do not use <code>block.number</code> instead. Block times vary and the value being
 expressed is a human interval.</p>
 <h2 id="arithmetic">Arithmetic<a class="headerlink" href="#arithmetic" title="Permanent link">#</a></h2>
-<p><code>overflow-checks = true</code> in the release profile, so every addition and
-subtraction is checked and a wrap aborts the transaction. <code>release_at</code> is an
-<code>i64</code> of unix seconds; with <code>MAX_DWELL</code> at seven days, overflow needs a clock
-within a week of the year 292 billion.</p>
-<h2 id="compute-and-unbounded-work">Compute and unbounded work<a class="headerlink" href="#compute-and-unbounded-work" title="Permanent link">#</a></h2>
-<p>The program contains no loops. Every instruction touches a fixed number of
-accounts, so its compute cost is bounded and small, and the trust list can grow
-without ever making a write fail, because it is never iterated on chain.</p>
+<p>Solidity 0.8 checked arithmetic throughout. No <code>unchecked</code> blocks except, if
+profiling justifies it, a loop counter increment in <code>KerbLens</code> paging, where the
+bound is a local length.</p>
+<p><code>releaseAt</code> is <code>uint64</code>, computed as <code>uint64(block.timestamp) + dwellOf(sender)</code>.
+With <code>MAX_DWELL</code> at seven days, overflow requires a timestamp within a week of
+2^64 seconds, roughly the year 584942417355. The cast from <code>uint256</code> to <code>uint64</code>
+is safe for the same reason.</p>
+<h2 id="denial-of-service-through-unbounded-loops">Denial of service through unbounded loops<a class="headerlink" href="#denial-of-service-through-unbounded-loops" title="Permanent link">#</a></h2>
+<p><code>KerbCore</code> contains no loops. Every write is O(1), including the set operations,
+which are constant time add, remove and contains.</p>
+<p><code>KerbLens</code> contains loops, bounded by the caller supplied <code>limit</code>, in view
+functions only. A caller who asks for too large a page gets a failed <code>eth_call</code>
+that costs nothing and reverts nothing.</p>
+<p>The trust list grows without bound in principle. It is never iterated onchain,
+so its size cannot make a write fail.</p>
+<h2 id="signature-and-approval-surface">Signature and approval surface<a class="headerlink" href="#signature-and-approval-surface" title="Permanent link">#</a></h2>
+<p>There is none. Kerb has no <code>permit</code>, no EIP712 domain, no signature
+verification and no meta transaction relay. The only approval involved is the
+ordinary ERC20 allowance the sender grants to <code>KerbCore</code>, which is required only
+for the hold path, since the straight through path moves the token directly
+between the two accounts.</p>
+<p>Interfaces should request an exact allowance rather than an unlimited one. Kerb
+cannot enforce that and should not pretend to.</p>
 <h2 id="deployment">Deployment<a class="headerlink" href="#deployment" title="Permanent link">#</a></h2>
-<p>The program takes no initialisation instruction. There is no config account, no
-admin to set and no address to inject, so there is nothing to get wrong between
-deploying and using it.</p>
-<p>Two steps matter, in this order, before the program id is published:</p>
-<ol>
-<li><strong>Verifiable build.</strong> Build with <code>anchor build --verifiable</code> or
-   <code>solana-verify build</code>, deploy that artifact, and submit it for verification
-   so explorers show the source matches the deployed program.</li>
-<li><strong>Revoke the upgrade authority.</strong> <code>solana program set-upgrade-authority
-   &lt;PROGRAM_ID&gt; --final</code>. Until this is done the program is upgradeable by
-   whoever holds the authority key, and every claim on the landing page about
-   having no admin is false.</li>
-</ol>
-<p>A protocol that claims no admin key must be checkable by anyone who wants to
-check that claim. An unverified program, or one whose upgrade authority is still
-set, makes the claim unfalsifiable. The explorer shows both.</p>
+<p><code>KerbCore</code> takes no constructor arguments. There is nothing to configure, no
+owner to set and no address to inject. Two independent deployments from the same
+bytecode are interchangeable except that they hold different trust lists.</p>
+<p><code>KerbLens</code> takes the <code>KerbCore</code> address as its single constructor argument and
+stores it <code>immutable</code>.</p>
+<p>Verify both on the explorer before publishing the addresses. A protocol that
+claims no admin key must be readable by anyone who wants to check that claim,
+and unverified bytecode makes the claim unfalsifiable.</p>
 <p>Next: <a href="/docs/implementation/testing">Testing</a>.</p>
             </div>
 <nav class="docs-pager" aria-label="Page">
@@ -339,17 +302,14 @@ set, makes the claim unfalsifiable. The explorer shows both.</p>
 
 <aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
 <ul>
-<li><a href="#account-validation">Account validation</a></li>
-<li><a href="#signers-and-pdas">Signers and PDAs</a></li>
-<li><a href="#closing-accounts">Closing accounts</a></li>
-<li><a href="#pre-funded-addresses">Pre-funded addresses</a></li>
-<li><a href="#duplicate-accounts">Duplicate accounts</a></li>
 <li><a href="#reentrancy">Reentrancy</a></li>
+<li><a href="#cross-function-reentrancy">Cross function reentrancy</a></li>
 <li><a href="#solvency">Solvency</a></li>
 <li><a href="#griefing">Griefing</a></li>
-<li><a href="#clock-dependence">Clock dependence</a></li>
+<li><a href="#timestamp-dependence">Timestamp dependence</a></li>
 <li><a href="#arithmetic">Arithmetic</a></li>
-<li><a href="#compute-and-unbounded-work">Compute and unbounded work</a></li>
+<li><a href="#denial-of-service-through-unbounded-loops">Denial of service through unbounded loops</a></li>
+<li><a href="#signature-and-approval-surface">Signature and approval surface</a></li>
 <li><a href="#deployment">Deployment</a></li>
 </ul>
 </div>

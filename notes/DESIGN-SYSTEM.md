@@ -831,7 +831,7 @@ adapts an existing layout instead of building new ones.
 | 4 How it works | `[ How it works ]` `ol.cells`, three columns rather than four. Numerals `01`, `02`, `03` in `--accent-lit`. Visual A sits in step `02` |
 | 5 Properties | `[ The machine ]` three column claims, run as two rows of three inside `.cells` to hold six |
 | 6 Honest limits | `[ The machine ]` again, three columns, but with no typed heading. Plain text, static, per brief 8.2 |
-| 7 Program | The mono ledger from `[ The deal ]`: label, dotted leader, value. Two rows plus a network row |
+| 7 Contracts | The mono ledger from `[ The deal ]`: label, dotted leader, value. Three rows plus a network row |
 | 8 Footer | Footer CTA, then the wordmark, then the link grid, then the legal row |
 | `/app` compose card | `.panel` at `p-6 sm:p-8`, `.input-well w-full px-4 py-3 text-[16px] sm:text-[13px]` per field, `.btn-solid` primary, `.btn-ghost` secondary |
 | `/app` contacts list | `.cells` single column, one row per contact |

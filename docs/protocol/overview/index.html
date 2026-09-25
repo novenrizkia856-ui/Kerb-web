@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Overview | Kerb docs</title>
-<meta name="description" content="A read helper is often deployed as a second program, because on many chains the only way to shape storage into an answer is to run code next to it. On Sola">
+<meta name="description" content="The split exists so the read surface can be rich without making the write surface large. KerbLens holds no state, custodies nothing, and can be redeployed">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Overview | Kerb docs">
-<meta property="og:description" content="A read helper is often deployed as a second program, because on many chains the only way to shape storage into an answer is to run code next to it. On Sola">
+<meta property="og:description" content="The split exists so the read surface can be rich without making the write surface large. KerbLens holds no state, custodies nothing, and can be redeployed">
 <meta property="og:site_name" content="Kerb">
 <meta property="og:url" content="" data-site-url="/docs/protocol/overview">
 <link rel="canonical" href="" data-site-url="/docs/protocol/overview">
@@ -53,7 +53,7 @@
     <div class="nav-desktop">
       <a class="nav-link panel-hover" href="/#how">How it works</a>
       <a class="nav-link panel-hover" href="/#limits">Limits</a>
-      <a class="nav-link panel-hover" href="/#program">Program</a>
+      <a class="nav-link panel-hover" href="/#contracts">Contracts</a>
       <a class="nav-link panel-hover" href="/docs" aria-current="page">Docs</a>
     </div>
 
@@ -103,8 +103,8 @@
 <div class="docs-nav-group">
 <span class="label">Implementation</span>
 <ul class="docs-nav-list">
-<li><a class="docs-rail-link" href="/docs/implementation/core">The Kerb program</a></li>
-<li><a class="docs-rail-link" href="/docs/implementation/lens">Reading state</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/core">KerbCore</a></li>
+<li><a class="docs-rail-link" href="/docs/implementation/lens">KerbLens</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/assets">Assets</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/security">Security</a></li>
 <li><a class="docs-rail-link" href="/docs/implementation/testing">Testing</a></li>
@@ -130,134 +130,123 @@
             <div class="docs-crumbs"><a href="/docs">Docs</a><span class="sep">/</span><span>Protocol</span><span class="sep">/</span><span>Overview</span></div>
             <div class="docs-prose">
 <h1 id="protocol-overview">Protocol overview</h1>
-<h2 id="one-program-no-read-program">One program, no read program<a class="headerlink" href="#one-program-no-read-program" title="Permanent link">#</a></h2>
+<h2 id="two-contracts">Two contracts<a class="headerlink" href="#two-contracts" title="Permanent link">#</a></h2>
 <div class="docs-table-wrap"><table>
 <thead>
 <tr>
-<th>Piece</th>
+<th>Contract</th>
 <th>Role</th>
-<th>Holds state</th>
+<th>State</th>
 <th>Deployed</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>The Kerb program</td>
+<td><code>KerbCore</code></td>
 <td>Everything that writes. Escrow, holds, trust lists, dwell settings</td>
-<td>in accounts it owns</td>
-<td>once, upgrade authority revoked</td>
+<td>yes</td>
+<td>once, immutable</td>
 </tr>
 <tr>
-<td>Reads</td>
+<td><code>KerbLens</code></td>
 <td>Everything that reads. Derived views for wallets and frontends</td>
 <td>no</td>
-<td>not deployed at all, it is client code</td>
+<td>once, immutable</td>
 </tr>
 </tbody>
 </table></div>
-<p>A read helper is often deployed as a second program, because on many chains the
-only way to shape storage into an answer is to run code next to it. On Solana
-every account is directly readable over RPC, and program derived
-addresses can be computed by anyone. So the read surface lives in the client:
-derive the address, fetch the account, decode it. Nothing to deploy, nothing to
-trust, and a better read shape later is a library change. See
-<a href="/docs/implementation/lens">Reading state</a>.</p>
-<h2 id="what-the-program-has-and-does-not-have">What the program has, and does not have<a class="headerlink" href="#what-the-program-has-and-does-not-have" title="Permanent link">#</a></h2>
-<pre><code class="language-rust">#[program]
-pub mod kerb {
-    // no admin key, no authority account
+<p>The split exists so the read surface can be rich without making the write
+surface large. <code>KerbLens</code> holds no state, custodies nothing, and can be
+redeployed without touching <code>KerbCore</code> if a better read shape is wanted later.
+<code>KerbCore</code> cannot be redeployed in any meaningful sense, because the trust lists
+live in it.</p>
+<h2 id="what-kerbcore-has-and-does-not-have">What KerbCore has, and does not have<a class="headerlink" href="#what-kerbcore-has-and-does-not-have" title="Permanent link">#</a></h2>
+<pre><code class="language-solidity">contract KerbCore {
+    // no owner
+    // no admin role
     // no pause
-    // no upgrade path: the upgrade authority is set to none at deploy
-    // no global config account, so nothing to initialise
+    // no upgrade path, no proxy, no delegatecall
     // no fee, no fee recipient, no treasury
     // no oracle, no price feed
-    // no token of its own
-    // no dependency beyond the system, token and associated token programs
+    // no token
+    // no external dependency beyond the ERC20 interface
 }
 </code></pre>
-<p>Every one of those absences is load bearing. A pause instruction is a key that
-can freeze your funds. A fee recipient is an address that must be trusted. An
-upgrade authority is permission to replace the rules after you have relied on
-them. The Kerb claim is that the only key affecting your Kerb state is your own,
-and each of these would falsify it.</p>
+<p>Every one of those absences is load bearing. A pause function is a key that can
+freeze your funds. A fee recipient is an address that must be trusted. An
+upgrade path is permission to replace the rules after you have relied on them.
+The Kerb claim is that the only key affecting your Kerb state is your own, and
+each of these would falsify it.</p>
 <p>The practical consequence is that a bug cannot be patched. It can only be
 abandoned, by everyone moving to a new deployment and rebuilding their trust
 lists through fresh settled transfers. That trade is made deliberately and is
 why <a href="/docs/implementation/testing">Testing</a> is specified as tightly as it is.</p>
 <h2 id="data-ownership">Data ownership<a class="headerlink" href="#data-ownership" title="Permanent link">#</a></h2>
-<p>Every piece of state is its own account, at a program derived address (PDA)
-computed from the keys it belongs to.</p>
-<pre><code>Kerb program
+<pre><code>KerbCore
   |
-  +-- per sender                    seeds: &quot;settings&quot;, sender
-  |     +-- dwell override          u64, zero means use the protocol default
+  +-- per sender
+  |     +-- dwell override            uint64, zero means use the protocol default
+  |     +-- trusted recipients        set of addresses
+  |     +-- pending hold ids          set of bytes32
   |
-  +-- per sender and recipient      seeds: &quot;contact&quot;, sender, recipient
-  |     +-- contact                 exists exactly when the recipient is trusted
+  +-- per hold, keyed by holdId
+  |     +-- sender, recipient, asset, amount, releaseAt, status
   |
-  +-- per sender, recipient, mint   seeds: &quot;hold&quot;, sender, recipient, mint
-  |     +-- hold                    amount, release_at
-  |     +-- vault                   the escrowed tokens, or the lamports themselves
-  |
-  +-- per recipient and mint        seeds: &quot;claim&quot;, recipient, mint
-        +-- claim                   the pull fallback, see Assets
+  +-- per recipient and asset
+        +-- claimable balance         the pull fallback, see Assets
 </code></pre>
-<p>Nothing is global. Every address is derived from the sender, or for a claim from
-the recipient, so no two users' state can collide and no instruction can reach
-an account that is not derived from the keys it was given.</p>
-<p>Native SOL is addressed with the all zero key, <code>11111111111111111111111111111111</code>,
-in the mint position.</p>
+<p>Nothing is keyed globally except the holds mapping, and a hold id is derived
+from the sender, so no two senders can collide.</p>
 <h2 id="the-write-surface">The write surface<a class="headerlink" href="#the-write-surface" title="Permanent link">#</a></h2>
-<p>Six instructions. That is the entire mutable interface.</p>
+<p>Six functions. That is the entire mutable interface.</p>
 <div class="docs-table-wrap"><table>
 <thead>
 <tr>
-<th>Instruction</th>
-<th>Signer</th>
+<th>Function</th>
+<th>Caller</th>
 <th>Effect</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>send</code></td>
-<td>the sender</td>
+<td>anyone</td>
 <td>moves funds straight through, or opens a hold</td>
 </tr>
 <tr>
 <td><code>cancel</code></td>
-<td>the hold's sender, before <code>release_at</code></td>
+<td>the hold sender, before <code>releaseAt</code></td>
 <td>returns funds, trusts nothing</td>
 </tr>
 <tr>
 <td><code>settle</code></td>
-<td>anyone, at or after <code>release_at</code></td>
-<td>delivers funds, appends to the sender's list</td>
+<td>anyone, at or after <code>releaseAt</code></td>
+<td>delivers funds, appends to the sender list</td>
 </tr>
 <tr>
 <td><code>forget</code></td>
-<td>the sender, for their own list</td>
-<td>removes a recipient from the signer's list</td>
+<td>anyone, for their own list</td>
+<td>removes a recipient from the caller list</td>
 </tr>
 <tr>
-<td><code>set_dwell</code></td>
-<td>the sender, for themselves</td>
-<td>sets the signer's dwell inside the fixed bounds</td>
+<td><code>setDwell</code></td>
+<td>anyone, for themselves</td>
+<td>sets the caller dwell inside the fixed bounds</td>
 </tr>
 <tr>
 <td><code>claim</code></td>
-<td>a recipient owed a blocked delivery</td>
+<td>a recipient owed a failed push</td>
 <td>withdraws the pull fallback balance</td>
 </tr>
 </tbody>
 </table></div>
-<p>Full semantics are in <a href="/docs/implementation/core">The Kerb program</a>.</p>
+<p>Full signatures and semantics are in <a href="/docs/implementation/core">KerbCore</a>.</p>
 <h2 id="the-read-surface">The read surface<a class="headerlink" href="#the-read-surface" title="Permanent link">#</a></h2>
-<p>Every account above is readable by anyone with an RPC endpoint. The questions an
-interface asks, will this send be held, when would it release, what is on my
-list, what is pending, are answered by deriving an address and fetching it, or
-by one filtered query for a whole list. See
-<a href="/docs/implementation/lens">Reading state</a>.</p>
-<h2 id="network">Network<a class="headerlink" href="#network" title="Permanent link">#</a></h2>
+<p><code>KerbCore</code> exposes its mappings as public getters. <code>KerbLens</code> wraps them in the
+shapes an interface actually wants: will this send be held, when would it
+release, what is on my list, what is pending. See
+<a href="/docs/implementation/lens">KerbLens</a>.</p>
+<h2 id="chain">Chain<a class="headerlink" href="#chain" title="Permanent link">#</a></h2>
 <div class="docs-table-wrap"><table>
 <thead>
 <tr>
@@ -268,26 +257,21 @@ by one filtered query for a whole list. See
 <tbody>
 <tr>
 <td>Network</td>
-<td>Solana</td>
+<td>Robinhood Chain</td>
 </tr>
 <tr>
-<td>Cluster</td>
-<td><code>mainnet-beta</code> at launch, <code>devnet</code> for testing</td>
+<td>Chain id</td>
+<td>4663</td>
 </tr>
 <tr>
 <td>Native currency</td>
-<td>SOL, 9 decimals, the smallest unit is a lamport</td>
-</tr>
-<tr>
-<td>Program id</td>
-<td>none yet, the program is not deployed</td>
+<td>ETH, 18 decimals</td>
 </tr>
 </tbody>
 </table></div>
-<p>The program id will be published in <code>config/kerb.config.json</code> in the web
-repository, as <code>solana.KERB_PROGRAM_ID</code>, once deployment happens. The site
-renders <code>Not deployed</code> until then, and nothing in the codebase hardcodes a
-program id.</p>
+<p>Addresses will be published in <code>config/kerb.config.json</code> in the web repository
+once deployment happens. The site renders <code>Coming Soon</code> and <code>Not deployed</code> until
+then, and nothing in the codebase hardcodes an address.</p>
 <p>Next: <a href="/docs/protocol/lifecycle">Transfer lifecycle</a>.</p>
             </div>
 <nav class="docs-pager" aria-label="Page">
@@ -299,12 +283,12 @@ program id.</p>
 
 <aside class="docs-toc" aria-label="On this page"><span class="label">On this page</span><div class="toc">
 <ul>
-<li><a href="#one-program-no-read-program">One program, no read program</a></li>
-<li><a href="#what-the-program-has-and-does-not-have">What the program has, and does not have</a></li>
+<li><a href="#two-contracts">Two contracts</a></li>
+<li><a href="#what-kerbcore-has-and-does-not-have">What KerbCore has, and does not have</a></li>
 <li><a href="#data-ownership">Data ownership</a></li>
 <li><a href="#the-write-surface">The write surface</a></li>
 <li><a href="#the-read-surface">The read surface</a></li>
-<li><a href="#network">Network</a></li>
+<li><a href="#chain">Chain</a></li>
 </ul>
 </div>
 </aside>

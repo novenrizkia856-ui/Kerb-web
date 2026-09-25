@@ -5,14 +5,35 @@
     "ogTitle": "Kerb",
     "ogDescription": "First send waits. The rest fly."
   },
-  "solana": {
-    "SOLANA_NETWORK": "mainnet-beta",
-    "SOLANA_RPC_URL": "",
-    "EXPLORER_BASE_URL": "https://explorer.solana.com",
-    "KERB_TOKEN_MINT": "",
-    "KERB_TOKEN_SYMBOL": "KERB",
-    "KERB_PROGRAM_ID": "",
-    "TREASURY_ADDRESS": ""
+  "chain": {
+    "id": 4663,
+    "name": "Robinhood Chain",
+    "rpcUrl": "https://rpc.mainnet.chain.robinhood.com",
+    "explorerBaseUrl": "https://robinhoodchain.blockscout.com",
+    "explorerAddressPath": "/address/",
+    "explorerTxPath": "/tx/",
+    "nativeCurrency": {
+      "name": "Ether",
+      "symbol": "ETH",
+      "decimals": 18
+    }
+  },
+  "contracts": {
+    "core": {
+      "address": "0x18864D9Bd1334C14379238580D4268A7B84DD720",
+      "deployBlock": 60480190,
+      "verified": false
+    },
+    "lens": {
+      "address": "0x49D13fD98e3f3e9Fb1b4838f4DE250E782eC4492",
+      "deployBlock": 60480190,
+      "verified": false
+    }
+  },
+  "token": {
+    "address": "",
+    "symbol": "",
+    "decimals": 18
   },
   "defaults": {
     "dwellSeconds": 900,
@@ -26,9 +47,11 @@
   },
   "flags": {
     "appEnabled": true,
-    "showProgramSection": true
+    "appMode": "mock",
+    "showContractsSection": true
   },
   "wallet": {
+    "walletConnectProjectId": "502b80525460159a86756023b33798dc",
     "enabled": true
   }
 }

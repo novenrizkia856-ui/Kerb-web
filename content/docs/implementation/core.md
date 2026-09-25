@@ -1,190 +1,175 @@
-# The Kerb program
+# KerbCore
 
-The only program Kerb has. It owns every Kerb account and custodies value only
-while a hold is open.
-
-The sketches below use Anchor, because its account constraints make most of the
-checks declarative and therefore reviewable. They are a specification, not a
-finished program: account structs are abbreviated, and error handling around
-token CPIs is left to the real implementation.
+The only contract that holds state or custodies value.
 
 ## Interface
 
-```rust
-#[program]
-pub mod kerb {
-    pub fn send(ctx: Context<Send>, amount: u64) -> Result<()>;
-    pub fn cancel(ctx: Context<Cancel>) -> Result<()>;
-    pub fn settle(ctx: Context<Settle>) -> Result<()>;
-    pub fn forget(ctx: Context<Forget>) -> Result<()>;
-    pub fn set_dwell(ctx: Context<SetDwell>, dwell_seconds: u64) -> Result<()>;
-    pub fn claim(ctx: Context<ClaimFunds>) -> Result<()>;
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+interface IKerbCore {
+    // --- constants -----------------------------------------------------
+    function DEFAULT_DWELL() external view returns (uint64);
+    function MIN_DWELL()     external view returns (uint64);
+    function MAX_DWELL()     external view returns (uint64);
+
+    // --- writes --------------------------------------------------------
+    function send(address recipient, address asset, uint256 amount)
+        external payable returns (bytes32 holdId);
+
+    function cancel(bytes32 holdId) external;
+    function settle(bytes32 holdId) external;
+    function forget(address recipient) external;
+    function setDwell(uint64 dwellSeconds) external;
+    function claim(address asset) external;
+
+    // --- reads ---------------------------------------------------------
+    function holdIdOf(address sender, address recipient, address asset)
+        external pure returns (bytes32);
+
+    function holdOf(bytes32 holdId) external view returns (
+        address sender, address recipient, address asset,
+        uint256 amount, uint64 releaseAt, uint8 status
+    );
+
+    function isTrusted(address sender, address recipient) external view returns (bool);
+    function trustedCount(address sender) external view returns (uint256);
+    function trustedAt(address sender, uint256 index) external view returns (address);
+    function pendingCount(address sender) external view returns (uint256);
+    function pendingAt(address sender, uint256 index) external view returns (bytes32);
+    function dwellOf(address sender) external view returns (uint64);
+    function claimableOf(address recipient, address asset) external view returns (uint256);
 }
 ```
 
-There are no read instructions. Every account is readable directly; see
-[Reading state](lens.md).
-
-`mint` is the all zero key for SOL, and the mint address for an SPL token. For
-SOL the token accounts, the vault and the token programs are simply absent from
-the instruction, passed as Anchor `Option` accounts.
+`address asset` is `address(0)` for the native asset, and the token address for
+an ERC20.
 
 ## send
 
-```rust
-pub fn send(ctx: Context<Send>, amount: u64) -> Result<()> {
-    let sender = ctx.accounts.sender.key();
-    let recipient = ctx.accounts.recipient.key();
-    require!(recipient != Pubkey::default(), KerbError::ZeroRecipient);
-    require!(recipient != sender, KerbError::SelfSend);
-    require!(amount > 0, KerbError::ZeroAmount);
+```solidity
+function send(address recipient, address asset, uint256 amount)
+    external payable nonReentrant returns (bytes32 holdId)
+{
+    if (recipient == address(0))  revert ZeroRecipient();
+    if (recipient == msg.sender)  revert SelfSend();
+    if (amount == 0)              revert ZeroAmount();
 
-    let native = ctx.accounts.mint.is_none();
+    bool native = asset == address(0);
+    if (native) {
+        if (msg.value != amount) revert ValueMismatch();
+    } else {
+        if (msg.value != 0)      revert NativeNotAccepted();
+    }
 
-    // The contact account is passed unchecked at its derived address. It is
-    // trusted exactly when it exists and is owned by this program.
-    if ctx.accounts.contact.owner == &crate::ID {
-        // straight through, no account created
-        if native {
-            system_transfer(&ctx.accounts.sender, &ctx.accounts.recipient, amount)?;
+    if (_trusted[msg.sender].contains(recipient)) {
+        // straight through, no storage written
+        if (native) {
+            _pushNative(recipient, amount);   // reverts on failure, see below
         } else {
-            token_transfer_checked(
-                &ctx.accounts.sender_token_account,     // from the sender
-                &ctx.accounts.recipient_token_account,  // straight to the recipient
-                &ctx.accounts.sender,                   // authority: the signer
-                amount,
-            )?;
+            IERC20(asset).safeTransferFrom(msg.sender, recipient, amount);
         }
-        emit_cpi!(Sent { sender, recipient, mint: mint_key(&ctx), amount });
-        return Ok(());
+        emit Sent(msg.sender, recipient, asset, amount);
+        return bytes32(0);
     }
 
-    // A new recipient. The hold account is created by the `init` constraint at
-    // ("hold", sender, recipient, mint); creation fails if one is already open,
-    // which is reported as HoldPending.
-    if native {
-        require!(amount >= Rent::get()?.minimum_balance(0), KerbError::BelowRentExempt);
-        require!(!ctx.accounts.recipient.executable, KerbError::RecipientExecutable);
-    } else {
-        reject_unsupported_extensions(&ctx.accounts.mint)?;
+    holdId = holdIdOf(msg.sender, recipient, asset);
+    if (_holds[holdId].status == STATUS_PENDING) revert HoldPending();
+
+    uint256 received = amount;
+    if (!native) {
+        uint256 before = IERC20(asset).balanceOf(address(this));
+        IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
+        received = IERC20(asset).balanceOf(address(this)) - before;
+        if (received == 0) revert ZeroAmount();
     }
 
-    let received = if native {
-        system_transfer(&ctx.accounts.sender, &ctx.accounts.hold, amount)?;
-        amount
-    } else {
-        let before = ctx.accounts.vault.amount;
-        token_transfer_checked(
-            &ctx.accounts.sender_token_account,
-            &ctx.accounts.vault,
-            &ctx.accounts.sender,
-            amount,
-        )?;
-        ctx.accounts.vault.reload()?;
-        let received = ctx.accounts.vault.amount - before;
-        require!(received > 0, KerbError::ZeroAmount);
-        received
-    };
+    uint64 releaseAt = uint64(block.timestamp) + dwellOf(msg.sender);
 
-    let release_at = Clock::get()?.unix_timestamp + dwell_of(&ctx.accounts.settings) as i64;
+    _holds[holdId] = Hold({
+        sender:    msg.sender,
+        releaseAt: releaseAt,
+        status:    STATUS_PENDING,
+        recipient: recipient,
+        asset:     asset,
+        amount:    received
+    });
+    _pending[msg.sender].add(holdId);
 
-    let hold = &mut ctx.accounts.hold;
-    hold.sender = sender;
-    hold.recipient = recipient;
-    hold.mint = mint_key(&ctx);
-    hold.amount = received;
-    hold.release_at = release_at;
-    hold.bump = ctx.bumps.hold;
-
-    emit_cpi!(Held { hold: hold.key(), sender, recipient, mint: hold.mint, amount: received, release_at });
-    Ok(())
+    emit Held(holdId, msg.sender, recipient, asset, received, releaseAt);
 }
 ```
 
-Four details worth defending.
+Three details worth defending.
 
-**`received` rather than `amount`.** A Token-2022 mint with a transfer fee
-delivers less than was requested. Recording the requested amount would make the
-hold insolvent against invariant 3 the moment such a mint is used. Measuring the
-vault's balance before and after is the only correct thing to do here. See
-[Assets](assets.md).
+**`received` rather than `amount`.** A fee on transfer token delivers less than
+was requested. Recording the requested amount would make the contract insolvent
+against invariant 3 the moment such a token is used. Measuring the balance delta
+is the only correct thing to do here. See [Assets](assets.md).
 
-**The straight through path never touches a Kerb account.** For SOL it is a
-system transfer, for a token a single `transfer_checked`, both from the sender
-directly to the recipient. The program never holds the funds, so it cannot lose
-them, and the cost is close to a bare transfer.
+**The straight through path does not touch the contract.** For an ERC20 it is a
+single `transferFrom` from sender to recipient. `KerbCore` never holds the
+token, so it cannot lose it, and the gas is close to a bare transfer.
 
-**There is no allowance.** The sender signs the transaction, and Solana extends
-that signature to the token transfer the program makes on the sender's behalf
-inside it. Nothing is approved in advance and nothing outlives the transaction,
-so there is no standing permission for anyone to misuse later.
-
-**The contact check reads ownership, not a flag.** A contact account exists only
-if this program created it, and only `settle` creates one. An address somebody
-has pre-funded with lamports is owned by the system program, not by Kerb, so it
-still reads as untrusted.
+**A failed native push on the straight through path reverts.** It does not fall
+back to `claimable`. On this path the sender is present and can react, so
+failing loudly is better than quietly parking value in a contract.
 
 ## cancel
 
-```rust
-pub fn cancel(ctx: Context<Cancel>) -> Result<()> {
-    let hold = &ctx.accounts.hold;
-    // has_one = sender on the account constraint rejects any other signer
-    // with NotSender, before this body runs.
-    require!(Clock::get()?.unix_timestamp < hold.release_at, KerbError::WindowClosed);
+```solidity
+function cancel(bytes32 holdId) external nonReentrant {
+    Hold memory h = _holds[holdId];
+    if (h.status != STATUS_PENDING)         revert HoldNotFound();
+    if (h.sender != msg.sender)             revert NotSender();
+    if (block.timestamp >= h.releaseAt)     revert WindowClosed();
 
-    return_escrow_to_sender(&ctx)?;      // lamports, or vault tokens signed by the hold PDA
-    close_vault_to_sender(&ctx)?;        // SPL only
+    _pending[h.sender].remove(holdId);
+    delete _holds[holdId];
 
-    emit_cpi!(Cancelled {
-        hold: hold.key(), sender: hold.sender, recipient: hold.recipient,
-        mint: hold.mint, amount: hold.amount,
-    });
-    Ok(())
-    // `close = sender` on the hold constraint zeroes it and returns its rent
+    if (h.asset == address(0)) {
+        _pushNative(h.sender, h.amount);
+    } else {
+        IERC20(h.asset).safeTransfer(h.sender, h.amount);
+    }
+
+    emit Cancelled(holdId, h.sender, h.recipient, h.asset, h.amount);
 }
 ```
 
-The hold account is closed by Anchor at the end of the instruction, which zeroes
-its data and hands its lamports to the sender. A second `cancel` or `settle` in a
-later transaction finds no account and fails before any Kerb code runs.
+State is cleared before value moves. A reentrant call arriving during the
+refund finds `STATUS_NONE` and reverts with `HoldNotFound`, so the guard is
+belt and braces rather than the only defence.
+
+A failed native refund on cancel reverts rather than falling back. The sender
+asked for their money back and is present in the transaction, so a silent
+fallback would hide a problem they need to know about.
 
 ## settle
 
-```rust
-pub fn settle(ctx: Context<Settle>) -> Result<()> {
-    let hold = &ctx.accounts.hold;
-    require!(Clock::get()?.unix_timestamp >= hold.release_at, KerbError::WindowOpen);
+```solidity
+function settle(bytes32 holdId) external nonReentrant {
+    Hold memory h = _holds[holdId];
+    if (h.status != STATUS_PENDING)     revert HoldNotFound();
+    if (block.timestamp < h.releaseAt)  revert WindowOpen();
 
-    // Trust first. The contact is created at ("contact", sender, recipient)
-    // if it does not exist, funded out of the hold's own rent deposit: the
-    // program debits the hold, credits the contact address, then allocates and
-    // assigns it with the contact PDA's signature. The settler pays nothing
-    // towards the sender's list.
-    if create_contact_if_absent(&ctx)? {
-        emit_cpi!(Trusted { sender: hold.sender, recipient: hold.recipient });
+    _pending[h.sender].remove(holdId);
+    delete _holds[holdId];
+
+    if (_trusted[h.sender].add(h.recipient)) {
+        emit Trusted(h.sender, h.recipient);
     }
 
-    let delivered = if hold.mint == Pubkey::default() {
-        pay_lamports_from_hold(&ctx, hold.amount)?;   // cannot fail, see Assets
-        true
-    } else if recipient_account_is_frozen(&ctx)? {
-        move_vault_to_claim(&ctx)?;                   // the pull fallback
-        false
+    bool delivered = true;
+    if (h.asset == address(0)) {
+        delivered = _tryPushNative(h.recipient, h.amount);
+        if (!delivered) _claimable[h.recipient][address(0)] += h.amount;
     } else {
-        // The recipient's associated token account is created if missing,
-        // paid by the settler, exactly as a wallet transfer would.
-        pay_tokens_from_vault(&ctx, hold.amount)?;
-        true
-    };
+        IERC20(h.asset).safeTransfer(h.recipient, h.amount);
+    }
 
-    close_vault_to_sender(&ctx)?;
-    emit_cpi!(Settled {
-        hold: hold.key(), sender: hold.sender, recipient: hold.recipient,
-        mint: hold.mint, amount: hold.amount, delivered,
-    });
-    Ok(())
-    // `close = sender` returns what is left of the hold's rent to the sender
+    emit Settled(holdId, h.sender, h.recipient, h.asset, h.amount, delivered);
 }
 ```
 
@@ -192,83 +177,70 @@ pub fn settle(ctx: Context<Settle>) -> Result<()> {
 to cooperate in order to be paid, and a hold whose only settler was the sender
 would be a hold the sender could abandon.
 
-The frozen check happens before the transfer, not after it fails. A failed
-cross program invocation aborts the whole transaction on Solana, so there is no
-catching a refused transfer and falling back. The program has to ask first.
+`_trusted.add` returns whether the element was newly inserted, so `Trusted` is
+emitted exactly once per address per sender. See
+[Events and errors](../protocol/events-and-errors.md).
 
-## forget, set_dwell, claim
+## forget, setDwell, claim
 
-```rust
-pub fn forget(ctx: Context<Forget>) -> Result<()> {
-    // contact is passed unchecked at ("contact", sender, recipient).
-    // Absent: nothing to do, and nothing is emitted.
-    if ctx.accounts.contact.owner != &crate::ID {
-        return Ok(());
+```solidity
+function forget(address recipient) external {
+    if (_trusted[msg.sender].remove(recipient)) {
+        emit Forgotten(msg.sender, recipient);
     }
-    close_program_account(&ctx.accounts.contact, &ctx.accounts.sender)?;
-    emit_cpi!(Forgotten { sender: ctx.accounts.sender.key(), recipient: ctx.accounts.recipient.key() });
-    Ok(())
 }
 
-pub fn set_dwell(ctx: Context<SetDwell>, dwell_seconds: u64) -> Result<()> {
-    require!(
-        dwell_seconds == 0 || (MIN_DWELL..=MAX_DWELL).contains(&dwell_seconds),
-        KerbError::DwellOutOfRange
-    );
-    if dwell_seconds == 0 {
-        close_settings_if_present(&ctx)?;    // absent and zero mean the same thing
+function setDwell(uint64 dwellSeconds) external {
+    if (dwellSeconds != 0 && (dwellSeconds < MIN_DWELL || dwellSeconds > MAX_DWELL)) {
+        revert DwellOutOfRange();
+    }
+    _dwell[msg.sender] = dwellSeconds;
+    emit DwellSet(msg.sender, dwellSeconds);
+}
+
+function claim(address asset) external nonReentrant {
+    uint256 amount = _claimable[msg.sender][asset];
+    if (amount == 0) revert NothingToClaim();
+    _claimable[msg.sender][asset] = 0;
+
+    if (asset == address(0)) {
+        _pushNative(msg.sender, amount);
     } else {
-        write_settings(&ctx, dwell_seconds)?; // init_if_needed, paid by the sender
+        IERC20(asset).safeTransfer(msg.sender, amount);
     }
-    emit_cpi!(DwellSet { sender: ctx.accounts.sender.key(), dwell_seconds });
-    Ok(())
-}
-
-pub fn claim(ctx: Context<ClaimFunds>) -> Result<()> {
-    // has_one = recipient on the claim constraint: only the recipient signs.
-    let amount = ctx.accounts.claim.amount;
-    require!(amount > 0, KerbError::NothingToClaim);
-
-    // To any token account the recipient owns for this mint, so an account
-    // that is still frozen does not keep the funds stuck.
-    pay_from_claim_vault(&ctx, amount)?;
-    close_claim_vault_and_claim(&ctx)?;      // rent back to whoever funded them
-    emit_cpi!(Claimed { recipient: ctx.accounts.recipient.key(), mint: ctx.accounts.mint.key(), amount });
-    Ok(())
+    emit Claimed(msg.sender, asset, amount);
 }
 ```
 
-## Moving lamports out of a hold
+`forget` is a no op on an absent entry, and emits nothing in that case.
 
-A hold account is owned by the Kerb program, so the program can debit it
-directly. No system program call is involved, and none is possible: the system
-program only transfers from accounts it owns.
+## Native transfer helpers
 
-```rust
-fn pay_lamports_from_hold(ctx: &Context<Settle>, amount: u64) -> Result<()> {
-    let hold = ctx.accounts.hold.to_account_info();
-    let to = ctx.accounts.recipient.to_account_info();
-    **hold.try_borrow_mut_lamports()? -= amount;
-    **to.try_borrow_mut_lamports()? += amount;
-    Ok(())
+```solidity
+function _tryPushNative(address to, uint256 amount) private returns (bool ok) {
+    (ok, ) = to.call{value: amount}("");
+}
+
+function _pushNative(address to, uint256 amount) private {
+    if (!_tryPushNative(to, amount)) revert TransferFailed();
 }
 ```
 
-Checked arithmetic is on for the whole crate (`overflow-checks = true` in the
-release profile), so the subtraction cannot wrap.
+A full gas `call` is used rather than `transfer` or `send`. The 2300 gas stipend
+is a historical artefact that breaks legitimate recipient contracts, and the
+reentrancy it was meant to prevent is handled here by clearing state first and
+by the guard.
 
-## What there is no equivalent of
+## Receive
 
-**No fallback receive.** A Solana program is not paid by sending it lamports; it
-has no receive hook to reject them with. Lamports sent straight to a hold address
-are not tracked against any hold and are returned to the sender when the hold
-closes, since closing moves every lamport the account holds. Nothing can be
-stranded that way.
+```solidity
+receive() external payable {
+    revert NativeNotAccepted();
+}
+```
 
-**No reentrancy guard.** Solana does not let a program be re-entered through a
-cross program invocation, except by calling itself directly, and Kerb never
-does. The only invocations Kerb makes are into the system, token and associated
-token programs, and into itself for `emit_cpi!`, which carries no state change.
-See [Security](security.md).
+The contract must not accept a bare transfer. Native value only enters through
+`send`, where it is attached to a hold. Anything else would be untracked against
+invariant 3 and unrecoverable, since there is no sweep function and no owner.
 
-Next: [Reading state](lens.md).
+Next: [KerbLens](lens.md).

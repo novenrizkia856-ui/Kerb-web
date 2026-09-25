@@ -1,148 +1,134 @@
 # Testing
 
-The Kerb program's upgrade authority is revoked at deploy. There is no path from
-a discovered bug to a fix, only a path to abandoning the deployment. That makes
-the test suite the main line of defence rather than a formality, and it should
-be written before the program is considered done.
+`KerbCore` cannot be upgraded or paused. There is no path from a discovered bug
+to a fix, only a path to abandoning the deployment. That makes the test suite
+the main line of defence rather than a formality, and it should be written
+before the contract is considered done.
 
-Suggested stack: Anchor for the program, LiteSVM or `solana-program-test` for
-fast in process tests with direct control of the `Clock` sysvar, and Trident for
-fuzzing.
+Suggested stack: Foundry, for `forge test`, `forge fuzz` and `forge invariant`.
 
 ## Unit tests
 
 ### send, straight through
 
-- SOL to a trusted recipient moves the exact lamports and creates no account
-- An SPL token to a trusted recipient calls `transfer_checked` sender to
-  recipient directly, and the vault is never touched
-- Emits `Sent` with the right fields
-- A contact address pre-funded with lamports but not owned by Kerb reads as
-  untrusted
+- Native to a trusted recipient moves the exact value and writes no storage
+- ERC20 to a trusted recipient calls `transferFrom` sender to recipient directly
+- Returns `bytes32(0)`
+- Emits `Sent` with the right arguments
+- Reverts `ValueMismatch` when `msg.value != amount` for native
+- Reverts `NativeNotAccepted` when value is attached to an ERC20 send
+- Reverts on a failing native push rather than falling back
 
 ### send, new recipient
 
-- Creates a hold with `release_at == clock + dwell_of(sender)`
+- Creates a hold with `releaseAt == block.timestamp + dwellOf(sender)`
+- Adds the id to the sender pending set
 - Emits `Held`
-- Fails `HoldPending` on a second send to the same triple
-- Allows a second send to the same recipient with a different mint
-- Records the received amount, not the requested amount, for a transfer fee mint
-- Fails `ZeroRecipient`, `SelfSend`, `ZeroAmount` on each bad input
-- Fails `BelowRentExempt` at 890,879 lamports and succeeds at 890,880
-- Fails `RecipientExecutable` for a program account
-- Fails `UnsupportedMint` for a mint with a transfer hook, a permanent delegate,
-  or confidential transfers
-- Succeeds when the hold address was pre-funded with lamports
+- Reverts `HoldPending` on a second send to the same triple
+- Allows a second send to the same recipient with a different asset
+- Records the received amount, not the requested amount, for a fee on transfer token
+- Reverts `ZeroRecipient`, `SelfSend`, `ZeroAmount` on each bad input
 
 ### cancel
 
-- Only the sender can sign it
-- Fails `WindowClosed` at exactly `release_at`
-- Succeeds at `release_at - 1`
+- Only the sender can call it
+- Reverts `WindowClosed` at exactly `releaseAt`
+- Succeeds at `releaseAt - 1`
 - Returns the full held amount
-- Closes the hold and the vault and returns both rent deposits to the sender
-- Does **not** create a contact
-- A second cancel fails with the account missing
+- Deletes the hold and removes it from the pending set
+- Does **not** add the recipient to the trust list
+- Reverts `HoldNotFound` on a second cancel
 
 ### settle
 
-- Anyone can sign it, tested from a third key
-- Fails `WindowOpen` at `release_at - 1`
-- Succeeds at exactly `release_at`
+- Anyone can call it, tested from a third address
+- Reverts `WindowOpen` at `releaseAt - 1`
+- Succeeds at exactly `releaseAt`
 - Delivers the full amount
-- Creates the contact and emits `Trusted` once
+- Adds the recipient to the trust list and emits `Trusted` once
 - A second settlement to the same recipient does not emit `Trusted` again
-- Funds the contact from the hold's rent: the settler's balance changes by the
-  fee and, if needed, the recipient's token account rent, and nothing else
-- Creates the recipient's associated token account when it is missing
-- A frozen recipient account routes to a claim and emits
-  `Settled { delivered: false }` rather than failing
-- A second settle fails with the account missing
-- Succeeds when the contact address was pre-funded with lamports
+- Reverts `HoldNotFound` on a second settle
+- Native push to a rejecting contract credits `claimable` and emits
+  `Settled(delivered: false)` rather than reverting
 
-### forget, set_dwell, claim
+### forget, setDwell, claim
 
-- `forget` closes and emits, and is a silent no op on an absent entry
+- `forget` removes and emits, and is a silent no op on an absent entry
 - After `forget`, the next send to that recipient opens a hold again
-- `set_dwell` accepts the bounds exactly, rejects one below `MIN_DWELL` and one
+- `setDwell` accepts the bounds exactly, rejects one below `MIN_DWELL` and one
   above `MAX_DWELL`
-- `set_dwell(0)` closes the settings account and the effective dwell returns to
-  `DEFAULT_DWELL`
-- A dwell change does not move the `release_at` of an existing hold
-- `claim` pays into a destination other than the frozen account, closes the
-  claim, fails `NothingToClaim` at zero, and fails for any signer but the
-  recipient
+- `setDwell(0)` clears the override and `dwellOf` returns `DEFAULT_DWELL`
+- A dwell change does not move the `releaseAt` of an existing hold
+- `claim` zeroes the balance before pushing, reverts `NothingToClaim` at zero
 
 ## Property and invariant tests
 
-Run these under Trident with a flow that randomly calls `send`, `cancel`,
-`settle`, `forget`, `set_dwell` and `claim` across several keys, SOL, a classic
-SPL mint, a Token-2022 mint with a transfer fee, and a mint with a freeze
-authority that freezes recipient accounts at random, while warping the clock.
+Run these under `forge invariant` with a handler that randomly calls `send`,
+`cancel`, `settle`, `forget`, `setDwell` and `claim` across several actors, a
+native asset and at least two token types.
 
 | # | Property |
 |---|---|
-| 1 | Every open hold has `amount > 0` and a `release_at` inside the dwell bounds of its creation |
-| 2 | Every Kerb account sits at the PDA derived from its own fields |
-| 3 | **Solvency.** Every hold's escrow and every claim's vault holds at least its `amount` |
-| 4 | A contact exists only if a settle happened for that pair and no forget since |
-| 5 | Every settings account's dwell is inside the bounds |
-| 6 | A key cannot change any other key's contacts, settings, holds or claims, except by settling a hold exactly as opened |
-| 7 | Total value in equals total value out plus what is still held, per mint, net of transfer fees withheld |
+| 1 | No hold ever has a status other than none or pending after a call returns |
+| 2 | `_pending[s]` contains exactly the ids of pending holds whose sender is `s` |
+| 3 | **Solvency.** For each asset, contract balance is at least the sum of pending amounts plus claimable balances |
+| 4 | A recipient appears in `_trusted[s]` only if a settle happened for that pair, and disappears only through `forget` |
+| 5 | `_dwell[s]` is zero or inside the bounds |
+| 6 | An actor cannot change any other actor trust list, dwell, holds or claimable balance |
+| 7 | Total value in is equal to total value out plus what is still held |
 
 Property 3 is the one that matters most. Property 6 is the one that expresses
 the entire security claim of the protocol and should be asserted after every
-single call.
+single handler call.
 
 ## Fuzz targets
 
-- `send` with amounts across the full `u64` range, against mints with fuzzed
-  decimals and supply
-- `set_dwell` across the full `u64` range, asserting only the bounds are accepted
-- Clock warps between send and settle across a wide range, asserting the
-  boundary at exactly `release_at`
-- Transfer fee mints with a fuzzed fee from 0 to the maximum basis points,
-  asserting the stored amount always equals the vault delta
-- Account substitution: every instruction called with each account swapped for
-  a plausible wrong one, asserting it fails
+- `send` with fuzzed amounts across the full `uint256` range against a token
+  with a fuzzed total supply
+- `setDwell` across the full `uint64` range, asserting only the bounds are
+  accepted
+- Time warping between send and settle across a wide range, asserting the
+  boundary at exactly `releaseAt`
+- Fee on transfer tokens with a fuzzed fee from 0 to 100 percent, asserting the
+  stored amount always equals the delta
 
 ## Adversarial tests
 
-Write tests that try to cheat with accounts rather than with code, since that is
-where Solana programs break:
+Write a malicious recipient contract that, on receiving native value, attempts
+each of:
 
-- `settle` with the recipient's token account replaced by the settler's own
-- `cancel` signed by the recipient, and by a third key
-- `claim` with a claim account belonging to another recipient
-- A hold for one mint settled with a vault of another mint
-- The same account passed in two mutable positions
-- A pre-funded hold, contact and settings address for every instruction that
-  creates one
-- A closed hold revived within the same transaction by sending it lamports
+- `settle` on the same hold id
+- `settle` on a different pending hold
+- `cancel` on the hold being settled
+- `send` back to the original sender
+- `forget` on its own list
+- `claim`
 
-None may move more than the hold amount, and the solvency invariant must hold
-afterwards.
+None may succeed in extracting more than the hold amount, and the solvency
+invariant must hold afterwards.
 
-## Compute targets
+Also test a recipient that consumes all forwarded gas, and one that reverts
+unconditionally, confirming the `claimable` fallback rather than a revert.
+
+## Gas targets
 
 Not correctness, but worth measuring and keeping honest, since the straight
 through path being cheap is part of the argument for using Kerb at all.
 
 | Path | Target |
 |---|---|
-| `send` straight through, SOL | a system transfer plus one account read |
-| `send` straight through, SPL | a `transfer_checked` plus one account read |
-| `send` opening a hold | two account creations and one transfer |
-| `settle` | one transfer, at most one account creation, two closes |
+| `send` straight through, native | bare transfer plus one cold SLOAD |
+| `send` straight through, ERC20 | bare `transferFrom` plus one cold SLOAD |
+| `send` opening a hold | four storage writes plus one set insertion |
+| `settle` | the write cost largely refunded by the delete |
 
 ## Differential check against the frontend
 
-The web app truncates addresses and validates public keys itself. Once the
-program exists, add a test that a set of random keys truncates identically in
-the program's client library and in the JavaScript helper in `config/config.js`,
-and that `isPublicKey` in `config/solana.js` accepts exactly the keys
-`PublicKey` accepts, so a display in the app can never disagree with one derived
-from chain state.
+The web app computes the same truncation and the same `willHold` decision that
+the contracts do. Once the contracts exist, add a test that a set of random
+addresses truncates identically in Solidity and in the JavaScript helper in
+`config/config.js`, so a display in the app can never disagree with a display
+derived from chain state.
 
 ## What is not covered yet
 

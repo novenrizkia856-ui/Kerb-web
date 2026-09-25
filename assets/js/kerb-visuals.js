@@ -149,29 +149,23 @@ function seededRandom(seed) {
   return () => (state = (1103515245 * state + 12345) % 2147483648) / 2147483648;
 }
 
-const BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const HEX = '0123456789abcdef';
 
-function base58Chars(rand, count) {
-  let out = '';
-  for (let i = 0; i < count; i++) out += BASE58[(rand() * 58) | 0];
+function noiseAddress(rand) {
+  let out = '0x';
+  for (let i = 0; i < 40; i++) out += HEX[(rand() * 16) | 0];
   return out;
 }
 
-/* A Solana public key is 43 or 44 base58 characters. Only its truncated form is
-   ever shown, so the noise only has to look like one. */
-function noiseAddress(rand) {
-  return base58Chars(rand, 44);
-}
-
 /* A poisoned entry keeps the head and the tail of a real address and changes
-   only the middle, which is the part a truncated display never shows. On Solana
-   the head and tail are the four characters each side that wallets render, and
-   a vanity generator reaches both in minutes. That is the whole attack, so the
-   lookalike renders identically to the real row. */
+   only the middle, which is the part a truncated display never shows. That is
+   the whole attack, so the lookalike renders identically to the real row. */
 function poison(address, rand) {
-  const head = address.slice(0, 4);
+  const head = address.slice(0, 6);
   const tail = address.slice(-4);
-  return head + base58Chars(rand, address.length - 8) + tail;
+  let middle = '';
+  for (let i = 0; i < address.length - 10; i++) middle += HEX[(rand() * 16) | 0];
+  return head + middle + tail;
 }
 
 const HISTORY_MIN_MS = 700;
@@ -192,7 +186,6 @@ function row(text, tag, kind) {
   li.dataset.kind = kind;
 
   const code = document.createElement('code');
-  code.dataset.address = '';
   code.textContent = text;
 
   const badge = document.createElement('span');
